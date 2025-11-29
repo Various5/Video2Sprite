@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video2SpriteSheet Login</title>
+  <style>
+    :root {
+      --bg: #0d1014;
+      --panel: #131820;
+      --muted: #a3acb9;
+      --text: #f4f6f8;
+      --accent: #9be7b4;
+      --accent-strong: #6fce9c;
+      --stroke: #262d38;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      --glow: 0 18px 45px rgba(111, 206, 156, 0.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Manrope", "Inter", system-ui, sans-serif;
+      background: radial-gradient(circle at 12% 18%, rgba(111, 206, 156, 0.16), transparent 24%),
+                  radial-gradient(circle at 82% 6%, rgba(100, 181, 148, 0.12), transparent 20%),
+                  linear-gradient(135deg, #0b0e12 0%, #0f141a 40%, #0b0e12 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 22px;
+      width: min(420px, 100%);
+      box-shadow: var(--shadow), var(--glow);
+    }
+    h1 { margin: 0 0 8px; letter-spacing: -0.4px; }
+    p { margin: 0 0 12px; color: var(--muted); }
+    label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); margin-bottom: 12px; }
+    input {
+      background: #0f131a;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 11px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.18s ease, box-shadow 0.18s ease;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(155, 231, 180, 0.18); }
+    button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+      border: 1px solid transparent;
+      color: #0b0f0d;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: var(--glow);
+      margin-top: 6px;
+    }
+    button:hover { transform: translateY(-2px); }
+    .muted { color: var(--muted); font-size: 13px; text-align: center; margin-top: 10px; }
+    .status { min-height: 20px; font-size: 13px; color: var(--muted); margin-top: 8px; text-align: center; }
+    .error { color: #ef6b6b; }
+    .success { color: #8fe0aa; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign in</h1>
+    <p>Authenticate to access the Video2Sprite tools.</p>
+    <form id="authForm">
+      <label>Username <input type="text" name="username" required></label>
+      <label>Password <input type="password" name="password" required></label>
+      <button type="submit" id="loginBtn">Login</button>
+      <button type="button" id="registerBtn" style="background: rgba(255,255,255,0.06); color: var(--text); margin-top:8px;">Register (first user or admin only)</button>
+      <div class="status" id="status"></div>
+    </form>
+    <div class="muted">After login you will be redirected automatically.</div>
+  </div>
+
+  <script>
+    const form = document.getElementById("authForm");
+    const statusEl = document.getElementById("status");
+    const registerBtn = document.getElementById("registerBtn");
+    const loginBtn = document.getElementById("loginBtn");
+
+    const setStatus = (msg, cls = "") => {
+      statusEl.textContent = msg;
+      statusEl.className = `status ${cls}`;
+    };
+
+    const goHome = () => { window.location.href = "/"; };
+
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("/auth/status");
+        const data = await res.json();
+        if (data.authenticated) {
+          goHome();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkAuth();
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setStatus("Signing in...");
+      const payload = {
+        username: form.username.value.trim(),
+        password: form.password.value,
+      };
+      try {
+        const res = await fetch("/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || "Login failed");
+        }
+        setStatus("Success. Redirecting...", "success");
+        setTimeout(goHome, 300);
+      } catch (err) {
+        setStatus(err.message || "Login failed", "error");
+      }
+    });
+
+    registerBtn.addEventListener("click", async () => {
+      setStatus("Registering...");
+      const payload = {
+        username: form.username.value.trim(),
+        password: form.password.value,
+      };
+      if (!payload.username || !payload.password) {
+        setStatus("Enter username and password", "error");
+        return;
+      }
+      try {
+        const res = await fetch("/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || "Register failed");
+        }
+        setStatus("Registered. You can now login.", "success");
+      } catch (err) {
+        setStatus(err.message || "Register failed", "error");
+      }
+    });
+  </script>
+</body>
+</html>

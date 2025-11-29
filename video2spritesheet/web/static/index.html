@@ -109,7 +109,7 @@
       width: calc(100% - 24px);
       margin: 0 auto;
       padding: 0 0 28px;
-      max-width: 100%;
+      max-width: 1600px;
     }
     body::before {
       content: "";
@@ -130,6 +130,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 16px;
+      flex-wrap: wrap;
     }
     .title {
       display: flex;
@@ -205,7 +206,7 @@
     main {
       padding: 0 0 28px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
       gap: 20px;
       align-items: start;
     }
@@ -368,6 +369,35 @@
       height: auto;
       display: block;
     }
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .media-card {
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: #0f131a;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      transition: border 0.18s ease, box-shadow 0.18s ease;
+    }
+    .media-card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+    .media-thumb {
+      width: 100%;
+      height: 140px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #0c0f15;
+    }
+    .media-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .artifact-list {
       list-style: none;
       padding: 0;
@@ -513,13 +543,23 @@
   </header>
 
   <main id="tabSprites">
+    <section class="panel" style="grid-column: span 2;">
+      <h2>Media Pool</h2>
+      <p class="subtitle">Manage uploads in Media Library. Select a video/image there and it becomes available to all tools.</p>
+      <div class="links" style="margin-top:10px;">
+        <span class="pill">Selected:</span>
+        <span class="pill-note" id="selectedArtifact">None</span>
+        <button type="button" class="ghost small" onclick="setView('library')">Open Media Library</button>
+      </div>
+    </section>
+
     <section class="panel">
-      <h2>1) Upload &amp; configure</h2>
+      <h2>Spritesheet Builder</h2>
       <form id="uploadForm">
         <label>
           Video file
-          <input type="file" name="video" accept=".mp4,.mov,.avi,.mkv,.webm" multiple required>
-          <small id="metaHint" style="color: var(--muted);">Resolution/length filled after selecting a file.</small>
+          <input type="file" name="video" accept=".mp4,.mov,.avi,.mkv,.webm" multiple>
+          <small id="metaHint" style="color: var(--muted);">Or select a video from Media Pool.</small>
         </label>
         <div class="inline">
           <label>Output width <input type="number" name="output_width" min="1" placeholder="Keep source"></label>
@@ -600,7 +640,7 @@
       </section>
 
       <section class="panel">
-      <h2>2) Preview &amp; download</h2>
+      <h2>Preview &amp; download</h2>
       <div class="preview checker" id="preview">
         <span id="previewPlaceholder">Your spritesheet will appear here.</span>
         <img id="previewImage" alt="Spritesheet preview" style="display:none;">
@@ -702,12 +742,25 @@
   <main id="tabLibrary" style="display:none;">
     <section class="panel">
       <h2>Media Library</h2>
-      <p class="subtitle">Click an artifact to set it as the current selection for all tools. Copyable and auto-filled into artifact URL fields.</p>
+      <p class="subtitle">Drag & drop or click to upload. Videos land in /artifacts/videos, images in /artifacts/images. Select any item to reuse across tools.</p>
       <div class="badge-row" style="margin-bottom:12px;">
         <span class="pill">Selected</span>
-        <span id="selectedArtifact" class="pill-note">None</span>
+        <span id="selectedArtifactLibrary" class="pill-note">None</span>
       </div>
-      <ul class="artifact-list" id="libraryList"></ul>
+      <div id="libraryDropzone" class="preview checker" style="min-height:140px; cursor:pointer; border-style: dashed;">
+        <span id="libraryDropHint">Drop files here or click to upload</span>
+      </div>
+      <input type="file" id="libraryFileInput" style="display:none;" multiple accept=".png,.jpg,.jpeg,.webp,.mp4,.mov,.avi,.mkv,.webm">
+      <div class="media-grid" style="margin-top:12px;">
+        <div>
+          <h3 style="margin:0 0 6px;">Videos</h3>
+          <div class="media-grid" id="libraryVideoList"></div>
+        </div>
+        <div>
+          <h3 style="margin:0 0 6px;">Images</h3>
+          <div class="media-grid" id="libraryImageList"></div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -717,7 +770,8 @@
       <form id="imageForm">
         <label>
           Image or spritesheet
-          <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp" required>
+          <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp">
+          <small>Select from Media Pool to reuse without upload.</small>
         </label>
 
         <div class="subpanel">
@@ -1321,8 +1375,8 @@
     const rotPreview = document.getElementById("rotPreview");
     const rotPreviewPlaceholder = document.getElementById("rotPreviewPlaceholder");
     const rotLinks = document.getElementById("rotLinks");
-    const libraryList = document.getElementById("libraryList");
-    const selectedArtifactEl = document.getElementById("selectedArtifact");
+    const selectedArtifactBadge = document.getElementById("selectedArtifact");
+    const selectedArtifactLibraryBadge = document.getElementById("selectedArtifactLibrary");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -1331,7 +1385,7 @@
       const parsed = Number(trimmed);
       return Number.isFinite(parsed) ? parsed : null;
     };
-    let selectedArtifact = "";
+    let selectedMedia = { path: "", type: "" };
     const updateStatus = (el, message, isError = false, success = false) => {
       if (!el) return;
       el.textContent = message;
@@ -1339,12 +1393,33 @@
       if (isError) el.classList.add("error");
       if (success) el.classList.add("success");
     };
-    const setSelectedArtifact = (url) => {
-      selectedArtifact = url;
-      selectedArtifactEl.textContent = url || "None";
+    const setSelectedArtifact = (url, type = "") => {
+      selectedMedia = { path: url || "", type: type || selectedMedia.type };
+      const label = url || "None";
+      if (selectedArtifactBadge) selectedArtifactBadge.textContent = label;
+      if (selectedArtifactLibraryBadge) selectedArtifactLibraryBadge.textContent = label;
       document.querySelectorAll('[name$="_artifact_url"]').forEach((input) => {
-        input.value = url;
+        input.value = url || "";
       });
+    };
+
+    const uploadMediaFiles = async (files) => {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          const res = await fetch("/api/media/upload", { method: "POST", body: formData });
+          if (!res.ok) {
+            const detail = await res.json().catch(() => ({}));
+            throw new Error(detail.detail || `Upload failed (${file.name})`);
+          }
+          updateStatus(statusEl, `Uploaded ${file.name}`, false, true);
+        } catch (err) {
+          updateStatus(statusEl, err.message || "Upload failed", true);
+          break;
+        }
+      }
+      await refreshArtifacts();
     };
 
     let spriteSheetImage = null;
@@ -1508,9 +1583,11 @@
       return fetchArtifactFile(urlValue, fallbackName);
     };
 
-    const processImageRequest = async (file, settings) => {
+    const processImageRequest = async (file, settings, mediaPath = null) => {
       const formData = new FormData();
-      formData.append("image", file);
+      if (file) formData.append("image", file);
+      if (!file && mediaPath) formData.append("media_path", mediaPath);
+      if (!file && !mediaPath) throw new Error("No image provided");
       formData.append("settings", JSON.stringify(settings));
       const res = await fetch("/api/process-image", { method: "POST", body: formData });
       if (!res.ok) {
@@ -1612,8 +1689,9 @@
       event.preventDefault();
       const fileInput = form.video;
       const files = Array.from(fileInput.files);
-      if (!files.length) {
-        setStatus("Pick a video first.", true);
+      const mediaPath = !files.length && selectedMedia.type === "video" ? selectedMedia.path : null;
+      if (!files.length && !mediaPath) {
+        setStatus("Pick a video or select one from Media Library.", true);
         return;
       }
       const settings = {
@@ -1635,11 +1713,13 @@
         auto_edge_cutout: form.auto_edge_cutout.checked,
         output_pattern: form.output_pattern.value.trim(),
       };
-
-      for (const file of files) {
-        setStatus(`Processing ${file.name}...`, false);
+      const queue = files.length ? files : [null];
+      for (const file of queue) {
+        const label = file ? file.name : mediaPath;
+        setStatus(`Processing ${label}...`, false);
         const formData = new FormData();
-        formData.append("video", file);
+        if (file) formData.append("video", file);
+        if (!file && mediaPath) formData.append("media_path", mediaPath);
         formData.append("settings", JSON.stringify(settings));
         try {
           const res = await fetch("/api/generate", { method: "POST", body: formData });
@@ -1651,9 +1731,9 @@
           lastResult = data;
           showResult(data);
           await refreshArtifacts();
-          setStatus(`Done: ${file.name}`, false, true);
+          setStatus(`Done: ${label}`, false, true);
         } catch (err) {
-          setStatus(`${file.name}: ${err.message || "Generation failed."}`, true);
+          setStatus(`${label}: ${err.message || "Generation failed."}`, true);
           break;
         }
       }
@@ -1703,67 +1783,67 @@
       try {
         const res = await fetch("/api/artifacts");
         const data = await res.json();
-        const items = (data.images || []).sort().reverse();
+        const images = (data.images || []).sort().reverse();
+        const videos = (data.videos || []).sort().reverse();
+        const manifests = (data.manifests || []).sort().reverse();
         artifactList.innerHTML = "";
-        libraryList.innerHTML = "";
-        if (!items.length) {
-          const li = document.createElement("li");
-          li.textContent = "No artifacts yet.";
-          artifactList.appendChild(li);
-          const liLib = document.createElement("li");
-          liLib.textContent = "No artifacts yet.";
-          libraryList.appendChild(liLib);
-          return;
-        }
-        items.forEach((href) => {
-          const li = document.createElement("li");
+        libraryVideoList.innerHTML = "";
+        libraryImageList.innerHTML = "";
+
+        const addMediaRow = (targetList, href, typeLabel) => {
           const name = href.split("/").pop();
-          const deleteBtn = document.createElement("button");
-          deleteBtn.textContent = "Delete";
-          deleteBtn.type = "button";
-          deleteBtn.className = "ghost danger small";
-          deleteBtn.addEventListener("click", async (e) => {
+          const li = document.createElement("li");
+          li.textContent = name;
+          li.addEventListener("click", () => setSelectedArtifact(href, typeLabel));
+          const del = document.createElement("button");
+          del.className = "ghost danger small";
+          del.type = "button";
+          del.textContent = "Delete";
+          del.addEventListener("click", async (e) => {
             e.stopPropagation();
             try {
-              const resp = await fetch(`/api/artifacts/${encodeURIComponent(name)}`, { method: "DELETE" });
+              const resp = await fetch(`/api/media?path=${encodeURIComponent(href)}`, { method: "DELETE" });
               if (!resp.ok) {
                 const detail = await resp.json().catch(() => ({}));
                 throw new Error(detail.detail || "Delete failed");
               }
               await refreshArtifacts();
-              setStatus(`Deleted ${name}`, false, true);
+              updateStatus(statusEl, `Deleted ${name}`, false, true);
             } catch (err) {
-              setStatus(err.message || "Delete failed", true);
+              updateStatus(statusEl, err.message || "Delete failed", true);
             }
           });
-          li.innerHTML = `<span>${name}</span>`;
-          li.addEventListener("click", () => {
-            const url = `${href}?t=${Date.now()}`;
-            previewImg.src = url;
-            previewImg.style.display = "block";
-            previewPlaceholder.style.display = "none";
-            lastResult = null;
-            spriteSheetImage = null;
-            maskDataUrl = null;
-            stopAnimation();
-            loadSheetForAnimation(url, { frame_width: animCanvas.width, frame_height: animCanvas.height });
-          });
-          const pill = document.createElement("span");
-          pill.className = "pill";
-          pill.textContent = "sheet";
           const right = document.createElement("div");
           right.style.display = "flex";
           right.style.gap = "8px";
           right.style.alignItems = "center";
-          right.appendChild(pill);
-          right.appendChild(deleteBtn);
+          right.appendChild(del);
           li.appendChild(right);
-          artifactList.appendChild(li);
+          targetList.appendChild(li);
+        };
 
-          const liLib = document.createElement("li");
-          liLib.textContent = name;
-          liLib.addEventListener("click", () => setSelectedArtifact(href));
-          libraryList.appendChild(liLib);
+        if (!images.length && !videos.length && !manifests.length) {
+          const li = document.createElement("li");
+          li.textContent = "No media yet.";
+          artifactList.appendChild(li);
+          const liImg = document.createElement("li");
+          liImg.textContent = "No media yet.";
+          libraryImageList.appendChild(liImg);
+          const liVid = document.createElement("li");
+          liVid.textContent = "No media yet.";
+          libraryVideoList.appendChild(liVid);
+          return;
+        }
+
+        videos.forEach((href) => addMediaRow(libraryVideoList, href, "video"));
+        images.forEach((href) => addMediaRow(libraryImageList, href, "image"));
+
+        manifests.forEach((href) => {
+          const name = href.split("/").pop();
+          const li = document.createElement("li");
+          li.textContent = name;
+          li.addEventListener("click", () => window.open(href, "_blank"));
+          artifactList.appendChild(li);
         });
       } catch (err) {
         console.error(err);
@@ -1771,6 +1851,37 @@
     };
 
     refreshArtifacts();
+
+    // Media Library upload/selection
+    const handleFiles = (files) => {
+      if (!files || !files.length) return;
+      uploadMediaFiles(files);
+    };
+    libraryDropzone.addEventListener("click", () => libraryFileInput.click());
+    libraryFileInput.addEventListener("change", (e) => {
+      handleFiles(e.target.files);
+      libraryFileInput.value = "";
+    });
+    ["dragenter", "dragover"].forEach((evt) => {
+      libraryDropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        libraryDropzone.style.borderColor = "var(--accent)";
+        libraryDropHint.textContent = "Release to upload";
+      });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      libraryDropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        libraryDropzone.style.borderColor = "var(--stroke)";
+        libraryDropHint.textContent = "Drop files here or click to upload";
+      });
+    });
+    libraryDropzone.addEventListener("drop", (e) => {
+      const files = e.dataTransfer?.files;
+      handleFiles(files);
+    });
 
     // Animation + transparency helpers
     const loadSheetForAnimation = (url, data) => {
@@ -2042,12 +2153,14 @@
     imageForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const file = imageForm.image.files[0];
-      if (!file) {
-        setStatus("Pick an image first.", true);
+      const mediaPath = !file && selectedMedia.type === "image" ? selectedMedia.path : null;
+      if (!file && !mediaPath) {
+        setStatus("Pick an image or select one from Media Library.", true);
         return;
       }
       const formData = new FormData();
-      formData.append("image", file);
+      if (file) formData.append("image", file);
+      if (mediaPath) formData.append("media_path", mediaPath);
       const settings = {
         chroma_key_color: imgColorToRgba(),
         chroma_key_tolerance: numOrNull(imageForm.img_key_tolerance.value) ?? 12,
@@ -2268,9 +2381,9 @@
       event.preventDefault();
       const files = Array.from(studioForm.studio_images.files);
       let fileQueue = files;
-      if (!fileQueue.length && selectedArtifact) {
+      if (!fileQueue.length && selectedMedia.path && selectedMedia.type === "image") {
         try {
-          const artifactFile = await fetchArtifactFile(selectedArtifact, "artifact.png");
+          const artifactFile = await fetchArtifactFile(selectedMedia.path, "artifact.png");
           fileQueue = [artifactFile];
         } catch (err) {
           updateStatus(studioStatus, err.message || "Could not load artifact", true);
