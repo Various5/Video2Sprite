@@ -5,65 +5,237 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Video2SpriteSheet Web</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
     :root {
-      --bg: #0c1224;
-      --panel: #0f172a;
-      --muted: #9fb3c8;
-      --accent: #2dd4bf;
-      --accent-strong: #0ea5e9;
-      --border: #1f2a44;
-      --error: #f87171;
-      --success: #34d399;
-      --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      --bg: #0d1014;
+      --panel: #131820;
+      --panel-strong: #171d26;
+      --muted: #a3acb9;
+      --text: #f4f6f8;
+      --accent: #9be7b4;
+      --accent-strong: #6fce9c;
+      --border: #1f2530;
+      --stroke: #262d38;
+      --error: #ef6b6b;
+      --success: #8fe0aa;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      --glow: 0 18px 45px rgba(111, 206, 156, 0.25);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "Space Grotesk", "DM Sans", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(45, 212, 191, 0.06), transparent 32%),
-                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.1), transparent 34%),
-                  linear-gradient(135deg, #0b1220, #0d1528);
-      color: #e5e7eb;
+      font-family: "Manrope", "Inter", system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      background: radial-gradient(circle at 12% 18%, rgba(111, 206, 156, 0.16), transparent 24%),
+                  radial-gradient(circle at 82% 6%, rgba(100, 181, 148, 0.12), transparent 20%),
+                  linear-gradient(135deg, #0b0e12 0%, #0f141a 40%, #0b0e12 100%);
+      color: var(--text);
       min-height: 100vh;
     }
+    .app {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 230px;
+      background: rgba(19, 24, 32, 0.9);
+      border-right: 1px solid var(--stroke);
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 6px 0 30px rgba(0, 0, 0, 0.25);
+      transition: width 0.2s ease, transform 0.2s ease;
+    }
+    .sidebar.collapsed {
+      width: 68px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .brand-name { white-space: nowrap; }
+    .sidebar.collapsed .brand-name { display: none; }
+    .sidebar.collapsed .nav-link { text-align: center; padding: 10px 8px; }
+    .sidebar.collapsed .nav-toggle { text-align: center; padding: 8px 6px; }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(155, 231, 180, 0.2);
+    }
+    .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .nav-link {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--stroke);
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-align: left;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.18s ease;
+    }
+    .nav-link.active {
+      background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+      color: #0b0f0d;
+      border-color: transparent;
+      box-shadow: var(--glow);
+    }
+    .nav-toggle {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px;
+      cursor: pointer;
+      width: 100%;
+      transition: border 0.18s ease, color 0.18s ease;
+    }
+    .nav-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .content {
+      width: calc(100% - 24px);
+      margin: 0 auto;
+      padding: 0 0 28px;
+      max-width: 100%;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle at 40% 40%, rgba(155, 231, 180, 0.04), transparent 25%),
+                        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                        linear-gradient(0deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 120px 120px, 120px 120px;
+      opacity: 0.8;
+      z-index: 0;
+    }
+    header, main, #tabImageLab { position: relative; z-index: 1; }
     header {
-      padding: 28px 32px 12px;
+      padding: 28px 0 10px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
+      gap: 16px;
     }
     .title {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      background: rgba(155, 231, 180, 0.08);
+      border: 1px solid rgba(155, 231, 180, 0.22);
+      padding: 6px 10px;
+      border-radius: 999px;
+      width: fit-content;
     }
     h1 {
       margin: 0;
-      font-size: clamp(24px, 4vw, 34px);
-      letter-spacing: -0.5px;
+      font-size: clamp(26px, 4vw, 38px);
+      letter-spacing: -0.4px;
     }
     .subtitle {
       color: var(--muted);
       font-size: 15px;
+      max-width: 720px;
+      line-height: 1.5;
+    }
+    .badge-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .pill {
+      background: rgba(155, 231, 180, 0.12);
+      color: #c8f1d6;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(155, 231, 180, 0.28);
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+      min-width: 280px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+    .stat-label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .stat strong {
+      font-size: 16px;
+      color: var(--accent);
+      letter-spacing: -0.2px;
     }
     main {
-      padding: 0 32px 32px;
+      padding: 0 0 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+    #tabImageLab {
+      padding: 0 0 32px;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
       gap: 18px;
-      align-items: start;
     }
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
+      background: var(--panel-strong);
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
       padding: 18px 18px 22px;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), var(--glow);
+      backdrop-filter: blur(4px);
     }
     .panel h2 {
       margin: 0 0 12px;
       font-size: 18px;
-      letter-spacing: -0.3px;
+      letter-spacing: -0.25px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .panel h2::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(155, 231, 180, 0.3), transparent);
     }
     form {
       display: grid;
@@ -76,69 +248,110 @@
       font-size: 13px;
       color: var(--muted);
     }
+    small {
+      color: var(--muted);
+      font-size: 12px;
+    }
     input[type="file"],
     input[type="text"],
     input[type="number"] {
-      background: #0a1020;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: #e5e7eb;
-      padding: 10px 12px;
+      background: #0f131a;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 11px 12px;
       font-size: 14px;
       outline: none;
-      transition: border 0.2s ease, transform 0.2s ease;
+      transition: border 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
     }
     input:focus {
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(155, 231, 180, 0.18);
       transform: translateY(-1px);
+    }
+    input[type="color"] {
+      background: #0f131a;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0;
+      height: 44px;
+    }
+    input[type="range"] {
+      accent-color: var(--accent);
     }
     .inline {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 10px;
     }
     .switch {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       font-size: 13px;
-      color: #dbeafe;
+      color: var(--text);
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      background: #0f131a;
     }
     .switch input {
       width: 18px;
       height: 18px;
       accent-color: var(--accent);
     }
+    .tabs { display:none; }
     button {
-      background: linear-gradient(120deg, var(--accent), var(--accent-strong));
-      border: none;
-      color: #0b1220;
+      background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+      border: 1px solid transparent;
+      color: #0b0f0d;
       font-weight: 700;
       padding: 12px 16px;
       border-radius: 12px;
       cursor: pointer;
       font-size: 14px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: 0 10px 30px rgba(45, 212, 191, 0.25);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      box-shadow: var(--glow);
     }
     button:hover { transform: translateY(-2px); }
     button:active { transform: translateY(0); }
+    button.ghost {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      box-shadow: none;
+    }
+    button.ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    button.danger {
+      background: transparent;
+      border-color: #ef4444;
+      color: #fca5a5;
+      box-shadow: none;
+    }
+    button.small {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
     .status {
       min-height: 24px;
       color: var(--muted);
       font-size: 13px;
+      padding: 6px 0 0;
     }
     .status.error { color: var(--error); }
     .status.success { color: var(--success); }
     .preview {
       width: 100%;
-      border-radius: 12px;
-      border: 1px dashed var(--border);
+      border-radius: 14px;
+      border: 1px dashed var(--stroke);
       min-height: 240px;
       display: grid;
       place-items: center;
       overflow: hidden;
-      background: #0a1020;
+      background: #0f131a;
       position: relative;
     }
     .checker {
@@ -147,8 +360,8 @@
         linear-gradient(-45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
         linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.06) 75%),
         linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.06) 75%);
-      background-size: 24px 24px;
-      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background-size: 26px 26px;
+      background-position: 0 0, 0 13px, 13px -13px, -13px 0;
     }
     .preview img {
       max-width: 100%;
@@ -161,36 +374,30 @@
       margin: 0;
       display: grid;
       gap: 8px;
-      max-height: 320px;
+      max-height: 360px;
       overflow-y: auto;
     }
     .artifact-list li {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #0a1020;
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      background: #0f131a;
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
       padding: 10px 12px;
       cursor: pointer;
-      transition: border 0.2s ease, transform 0.2s ease;
+      transition: border 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
     }
     .artifact-list li:hover {
       border-color: var(--accent);
       transform: translateY(-1px);
-    }
-    .pill {
-      background: rgba(45, 212, 191, 0.14);
-      color: var(--accent);
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 12px;
+      box-shadow: var(--glow);
     }
     .links {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-top: 8px;
+      margin-top: 10px;
     }
     .link {
       color: var(--accent);
@@ -199,49 +406,146 @@
       border-bottom: 1px dashed transparent;
     }
     .link:hover { border-color: var(--accent); }
-    .badge-row {
+    .toolbar {
       display: flex;
-      gap: 10px;
       align-items: center;
+      gap: 10px;
       flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .pill-note {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255, 255, 255, 0.02);
       color: var(--muted);
       font-size: 12px;
     }
+    .subpanel {
+      margin-top: 10px;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+    }
+    .subpanel h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: var(--text);
+    }
+    .canvas-frame {
+      width: 100%;
+      max-width: 360px;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #0f131a;
+    }
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 70px 1fr; }
+      .sidebar { padding: 14px 10px; }
+      .sidebar.collapsed { width: 60px; }
+      header { flex-direction: column; }
+      .stat-grid { width: 100%; }
+      main { grid-template-columns: 1fr; }
+    }
     @media (max-width: 720px) {
-      main { padding: 0 16px 24px; }
-      header { padding: 22px 16px 6px; }
+      .content { width: calc(100% - 24px); }
+      header { padding: 22px 0 10px; }
+      main { grid-template-columns: 1fr; padding: 0 0 24px; }
+      #tabImageLab { grid-template-columns: 1fr; padding: 0 0 24px; }
     }
   </style>
 </head>
 <body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">Video2Sprite</span>
+      </div>
+      <button class="nav-toggle" id="navToggle">Collapse menu</button>
+      <div class="nav-links">
+        <button class="nav-link active" data-target="sprites">Video2Sprite</button>
+        <button class="nav-link" data-target="imageStudio">Image Studio</button>
+        <button class="nav-link" data-target="images">Image Lab</button>
+        <button class="nav-link" data-target="quickResize">Quick Resize</button>
+        <button class="nav-link" data-target="maskMaker">Mask Builder</button>
+        <button class="nav-link" data-target="colorTuner">Color Tuner</button>
+        <button class="nav-link" data-target="cropper">Smart Crop</button>
+        <button class="nav-link" data-target="bgRemover">Background Remover</button>
+        <button class="nav-link" data-target="fitTool">Square Fit</button>
+        <button class="nav-link" data-target="monoTool">Mono / Invert</button>
+        <button class="nav-link" data-target="blurTool">Blur / Rotate</button>
+        <button class="nav-link" data-target="flipTool">Flip Studio</button>
+        <button class="nav-link" data-target="toneTool">Tone Balance</button>
+        <button class="nav-link" data-target="canvasPad">Canvas Pad</button>
+        <button class="nav-link" data-target="rotateCrop">Rotate & Crop</button>
+        <button class="nav-link" data-target="library">Media Library</button>
+      </div>
+    </aside>
+    <div class="content">
   <header>
     <div class="title">
+      <div class="eyebrow">Video → Sprite pipeline</div>
       <h1>Video2SpriteSheet Web</h1>
-      <div class="subtitle">Drop in a clip, tune your sampling, ship a spritesheet + manifest.</div>
+      <div class="subtitle">Drop in a clip, tune your sampling, and instantly ship a spritesheet + manifest with a crisp, grey/green console-inspired UI.</div>
+      <div class="badge-row">
+        <span class="pill">FastAPI</span>
+        <span class="pill">No installs for viewers</span>
+        <span class="pill">Edge-safe</span>
+      </div>
     </div>
-    <div class="badge-row">
-      <span class="pill">FastAPI</span>
-      <span class="pill">On-device</span>
-      <span class="pill">No install for viewers</span>
+    <div class="stat-grid">
+      <div class="stat">
+        <span class="stat-label">Outputs</span>
+        <strong>Sprites + JSON</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Upload size</span>
+        <strong>Up to 512 MB</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Playback</span>
+        <strong>Live preview</strong>
+      </div>
     </div>
   </header>
 
-  <main>
-    <div style="display:flex; gap:12px; margin:0 0 12px 0;">
-      <button id="tabSpritesBtn" type="button" aria-pressed="true">Sprites</button>
-      <button id="tabImagesBtn" type="button" aria-pressed="false">Image Lab</button>
-    </div>
-    <section class="panel" id="tabSprites">
+  <main id="tabSprites">
+    <section class="panel">
       <h2>1) Upload &amp; configure</h2>
       <form id="uploadForm">
         <label>
           Video file
-          <input type="file" name="video" accept=".mp4,.mov,.avi,.mkv,.webm" required>
+          <input type="file" name="video" accept=".mp4,.mov,.avi,.mkv,.webm" multiple required>
           <small id="metaHint" style="color: var(--muted);">Resolution/length filled after selecting a file.</small>
         </label>
         <div class="inline">
           <label>Output width <input type="number" name="output_width" min="1" placeholder="Keep source"></label>
           <label>Output height <input type="number" name="output_height" min="1" placeholder="Keep source"></label>
+        </div>
+        <div class="inline">
+          <label>
+            Frame size preset
+            <select id="framePreset">
+              <option value="">Custom</option>
+              <option value="64x64">64 x 64</option>
+              <option value="128x128">128 x 128</option>
+              <option value="256x256">256 x 256</option>
+              <option value="512x512">512 x 512</option>
+            </select>
+          </label>
+          <label>
+            Grid preset
+            <select id="gridPreset">
+              <option value="">Custom</option>
+              <option value="4x4">4 x 4</option>
+              <option value="6x6">6 x 6</option>
+              <option value="8x8">8 x 8</option>
+              <option value="10x10">10 x 10</option>
+            </select>
+          </label>
         </div>
         <div class="inline">
           <label>Frame count <input type="number" name="frame_count" min="1" placeholder="Auto"></label>
@@ -262,18 +566,20 @@
         <div class="inline">
           <label>
             Background
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <input type="color" id="bgColor" value="#000000" style="flex:0 0 56px;">
               <input type="range" id="bgAlpha" min="0" max="255" value="0" title="Alpha" style="flex:1;">
-              <input type="text" name="background_color" placeholder="rgba" readonly>
+              <input type="text" name="background_color" placeholder="rgba" aria-label="Background RGBA">
+              <button type="button" class="ghost small" id="bgEyedrop">Eyedrop</button>
             </div>
           </label>
           <label>
             Key color
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <input type="color" id="keyColor" value="#000000" style="flex:0 0 56px;">
               <input type="range" id="keyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
-              <input type="text" name="chroma_key_color" placeholder="rgba" readonly>
+              <input type="text" name="chroma_key_color" placeholder="rgba" aria-label="Key color RGBA">
+              <button type="button" class="ghost small" id="keyEyedrop">Eyedrop</button>
             </div>
           </label>
         </div>
@@ -301,27 +607,107 @@
       </div>
       <div class="links" id="resultLinks"></div>
       <div style="margin-top:12px;">
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+        <div class="toolbar">
           <button id="playButton" type="button">Play animation</button>
-          <button id="maskToggle" type="button">Show alpha mask</button>
-          <button id="checkerToggle" type="button">Hide checkerboard</button>
-          <label style="color:var(--muted); font-size:12px;">FPS <input type="range" id="fpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
+          <button id="maskToggle" type="button" class="ghost">Show alpha mask</button>
+          <button id="checkerToggle" type="button" class="ghost">Hide checkerboard</button>
+          <label class="pill-note">FPS <input type="range" id="fpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
-          <label style="color:var(--muted); font-size:12px;">Preview BG
-            <input type="color" id="canvasBgColor" value="#0a1020" style="margin-left:6px;">
+        <div class="toolbar">
+          <label class="pill-note">Preview BG
+            <input type="color" id="canvasBgColor" value="#0f131a" style="margin-left:6px;">
           </label>
-          <label style="color:var(--muted); font-size:12px;">Alpha
+          <label class="pill-note">Alpha
             <input type="range" id="canvasBgAlpha" min="0" max="255" value="255" style="width:140px;">
           </label>
         </div>
-        <canvas id="animCanvas" width="320" height="240" class="checker" style="width:100%; max-width:360px; background:#0a1020; border:1px solid var(--border); border-radius:8px;"></canvas>
+        <canvas id="animCanvas" width="320" height="240" class="checker canvas-frame"></canvas>
       </div>
     </section>
 
     <section class="panel">
       <h2>Artifacts</h2>
       <ul class="artifact-list" id="artifactList"></ul>
+    </section>
+  </main>
+
+  <main id="tabImageStudio" style="display:none;">
+    <section class="panel">
+      <h2>Image Studio</h2>
+      <form id="studioForm">
+        <label>
+          Images (multi) or artifact URL
+          <input type="file" name="studio_images" accept=".png,.jpg,.jpeg,.webp" multiple>
+          <input type="text" name="studio_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Select multiple files to batch process; or pick an artifact from Media Library.</small>
+        </label>
+        <div class="inline">
+          <label>Resize width <input type="number" name="studio_resize_w" min="1" placeholder="auto"></label>
+          <label>Resize height <input type="number" name="studio_resize_h" min="1" placeholder="auto"></label>
+        </div>
+        <div class="inline">
+          <label>Crop X <input type="number" name="studio_crop_x" min="0" placeholder="0"></label>
+          <label>Crop Y <input type="number" name="studio_crop_y" min="0" placeholder="0"></label>
+          <label>Crop W <input type="number" name="studio_crop_w" min="1" placeholder="width"></label>
+          <label>Crop H <input type="number" name="studio_crop_h" min="1" placeholder="height"></label>
+        </div>
+        <div class="inline">
+          <label>Rotate (deg) <input type="number" name="studio_rotate" step="1" value="0"></label>
+          <label>Blur radius <input type="number" name="studio_blur" step="0.5" min="0" value="0"></label>
+        </div>
+        <div class="inline">
+          <label>Brightness <input type="number" name="studio_brightness" step="0.1" min="0.1" placeholder="1.0"></label>
+          <label>Contrast <input type="number" name="studio_contrast" step="0.1" min="0.1" placeholder="1.0"></label>
+        </div>
+        <div class="inline">
+          <label>Key tolerance <input type="number" name="studio_key_tolerance" min="0" max="255" value="12"></label>
+          <label><input type="checkbox" name="studio_auto_edge" checked> Edge-aware cutout</label>
+        </div>
+        <label>
+          Key color
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="studioKeyColor" value="#00ff00" style="flex:0 0 56px;">
+            <input type="range" id="studioKeyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="studio_chroma_key" placeholder="rgba or #rrggbb" aria-label="Studio key color">
+            <button type="button" class="ghost small" id="studioKeyEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <label>
+          Flatten background
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="studioBgColor" value="#0f131a" style="flex:0 0 56px;">
+            <input type="range" id="studioBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="studio_flatten" placeholder="rgba or #rrggbb" aria-label="Studio BG">
+            <button type="button" class="ghost small" id="studioBgEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <div class="inline">
+          <label><input type="checkbox" name="studio_grayscale"> Grayscale</label>
+          <label><input type="checkbox" name="studio_invert"> Invert colors</label>
+          <label><input type="checkbox" name="studio_flip_h"> Flip horizontal</label>
+          <label><input type="checkbox" name="studio_flip_v"> Flip vertical</label>
+          <label><input type="checkbox" name="studio_to_mask"> Output alpha mask</label>
+        </div>
+        <button type="submit">Process images</button>
+        <div class="status" id="studioStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="studioPreviewPlaceholder">Result will appear here.</span>
+        <img id="studioPreview" alt="Studio result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="studioLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabLibrary" style="display:none;">
+    <section class="panel">
+      <h2>Media Library</h2>
+      <p class="subtitle">Click an artifact to set it as the current selection for all tools. Copyable and auto-filled into artifact URL fields.</p>
+      <div class="badge-row" style="margin-bottom:12px;">
+        <span class="pill">Selected</span>
+        <span id="selectedArtifact" class="pill-note">None</span>
+      </div>
+      <ul class="artifact-list" id="libraryList"></ul>
     </section>
   </main>
 
@@ -334,7 +720,7 @@
           <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp" required>
         </label>
 
-        <div class="panel" style="padding:12px; background:#0b1324; border:1px solid var(--border);">
+        <div class="subpanel">
           <h3 style="margin:0 0 8px;">Basic Geometry</h3>
           <div class="inline">
             <label>Resize width <input type="number" name="img_resize_width" min="1" placeholder="auto"></label>
@@ -356,7 +742,7 @@
           </div>
         </div>
 
-        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+        <div class="subpanel">
           <h3 style="margin:0 0 8px;">Color & FX</h3>
           <div class="inline">
             <label><input type="checkbox" name="img_grayscale"> Grayscale</label>
@@ -368,7 +754,7 @@
           </div>
         </div>
 
-        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+        <div class="subpanel">
           <h3 style="margin:0 0 8px;">Chroma & Alpha</h3>
           <div class="inline">
             <label>Key tolerance <input type="number" name="img_key_tolerance" min="0" max="255" value="12"></label>
@@ -377,17 +763,18 @@
           <div class="inline">
             <label>
               Key color
-              <div style="display:flex; gap:8px; align-items:center;">
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                 <input type="color" id="imgKeyColor" value="#00ff00" style="flex:0 0 56px;">
                 <input type="range" id="imgKeyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
-                <input type="text" name="img_chroma_key" placeholder="rgba" readonly>
+                <input type="text" name="img_chroma_key" placeholder="rgba" aria-label="Image key RGBA">
+                <button type="button" class="ghost small" id="imgKeyEyedrop">Eyedrop</button>
               </div>
             </label>
             <label><input type="checkbox" name="img_to_mask"> Output alpha mask</label>
           </div>
         </div>
 
-        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+        <div class="subpanel">
           <h3 style="margin:0 0 8px;">Background</h3>
           <div class="inline">
             <label>
@@ -396,7 +783,7 @@
             <label>
               Color / Alpha
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="color" id="imgBgColor" value="#0a1020" style="flex:0 0 56px;">
+                <input type="color" id="imgBgColor" value="#0f131a" style="flex:0 0 56px;">
                 <input type="range" id="imgBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
               </div>
             </label>
@@ -408,18 +795,402 @@
       <div class="preview checker" style="margin-top:12px; min-height:240px;">
         <span id="imgPreviewPlaceholder">Processed image will appear here.</span>
         <img id="imgPreview" alt="Processed" style="display:none; max-height:420px;">
-        <canvas id="imgAnimCanvas" width="320" height="240" class="checker" style="width:100%; max-width:360px; background:#0a1020; border:1px solid var(--border); border-radius:8px; display:none;"></canvas>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px;">
-          <button id="imgPlayButton" type="button">Play spritesheet</button>
-          <label style="color:var(--muted); font-size:12px;">FPS <input type="range" id="imgFpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
-          <label style="color:var(--muted); font-size:12px;">Frame width <input type="number" id="imgFrameWidth" min="1" value="64" style="width:80px;"></label>
-          <label style="color:var(--muted); font-size:12px;">Frame height <input type="number" id="imgFrameHeight" min="1" value="64" style="width:80px;"></label>
-          <label style="color:var(--muted); font-size:12px;">Columns <input type="number" id="imgColumns" min="1" value="4" style="width:70px;"></label>
+        <canvas id="imgAnimCanvas" width="320" height="240" class="checker canvas-frame" style="display:none;"></canvas>
+        <div class="toolbar" style="margin-top:8px;">
+          <button id="imgPlayButton" type="button" class="ghost">Play spritesheet</button>
+          <label class="pill-note">FPS <input type="range" id="imgFpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
+          <label class="pill-note">Frame width <input type="number" id="imgFrameWidth" min="1" value="64" style="width:80px;"></label>
+          <label class="pill-note">Frame height <input type="number" id="imgFrameHeight" min="1" value="64" style="width:80px;"></label>
+          <label class="pill-note">Columns <input type="number" id="imgColumns" min="1" value="4" style="width:70px;"></label>
         </div>
       </div>
       <div class="links" id="imgLinks"></div>
     </section>
   </main>
+
+  <main id="tabQuickResize" style="display:none;">
+    <section class="panel">
+      <h2>Quick Resize / Compress</h2>
+      <form id="resizeForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="resize_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="resize_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Use either a file or an existing artifact URL from any project.</small>
+        </label>
+        <div class="inline">
+          <label>Width (px) <input type="number" name="resize_width" min="1" placeholder="Auto"></label>
+          <label>Height (px) <input type="number" name="resize_height" min="1" placeholder="Auto"></label>
+        </div>
+        <label>
+          Optional background flatten (hex or rgba)
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="resizeBgColor" value="#0f131a" style="flex:0 0 56px;">
+            <input type="range" id="resizeBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="resize_flatten_color" placeholder="rgba or #rrggbb" aria-label="Resize BG color">
+            <button type="button" class="ghost small" id="resizeBgEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <button type="submit">Process</button>
+        <div class="status" id="resizeStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="resizePreviewPlaceholder">Result image will appear here.</span>
+        <img id="resizePreview" alt="Resize result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="resizeLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabMaskMaker" style="display:none;">
+    <section class="panel">
+      <h2>Mask Builder</h2>
+      <form id="maskForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="mask_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="mask_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Pick a color to keep/remove; outputs a mask or keyed image.</small>
+        </label>
+        <div class="inline">
+          <label>Key tolerance <input type="number" name="mask_tolerance" min="0" max="255" value="12"></label>
+          <label><input type="checkbox" name="mask_auto_edge" checked> Edge-aware cutout</label>
+        </div>
+        <label>
+          Key color
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="maskKeyColor" value="#00ff00" style="flex:0 0 56px;">
+            <input type="range" id="maskKeyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="mask_chroma_key" placeholder="rgba or #rrggbb" aria-label="Mask key color">
+            <button type="button" class="ghost small" id="maskKeyEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <div class="switch"><input type="checkbox" name="mask_to_mask" checked> Output alpha mask</div>
+        <button type="submit">Build mask</button>
+        <div class="status" id="maskStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="maskPreviewPlaceholder">Mask will appear here.</span>
+        <img id="maskPreview" alt="Mask result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="maskLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabColorTuner" style="display:none;">
+    <section class="panel">
+      <h2>Color Tuner</h2>
+      <form id="colorForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="color_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="color_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Use any artifact from prior tools.</small>
+        </label>
+        <div class="inline">
+          <label>Brightness (1.0 = keep) <input type="number" name="color_brightness" step="0.1" min="0.1" placeholder="1.0"></label>
+          <label>Contrast (1.0 = keep) <input type="number" name="color_contrast" step="0.1" min="0.1" placeholder="1.0"></label>
+        </div>
+        <div class="inline">
+          <label>Blur radius <input type="number" name="color_blur" step="0.5" min="0" value="0"></label>
+          <label>Rotate (deg) <input type="number" name="color_rotate" step="1" value="0"></label>
+        </div>
+        <div class="inline">
+          <label><input type="checkbox" name="color_grayscale"> Grayscale</label>
+          <label><input type="checkbox" name="color_invert"> Invert colors</label>
+          <label><input type="checkbox" name="color_flip_h"> Flip horizontal</label>
+          <label><input type="checkbox" name="color_flip_v"> Flip vertical</label>
+        </div>
+        <button type="submit">Apply tweaks</button>
+        <div class="status" id="colorStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="colorPreviewPlaceholder">Result will appear here.</span>
+        <img id="colorPreview" alt="Color result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="colorLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabCropper" style="display:none;">
+    <section class="panel">
+      <h2>Smart Crop</h2>
+      <form id="cropForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="crop_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="crop_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Crop spritesheets or raw images; optionally resize after.</small>
+        </label>
+        <div class="inline">
+          <label>Crop X <input type="number" name="crop_x" min="0" placeholder="0"></label>
+          <label>Crop Y <input type="number" name="crop_y" min="0" placeholder="0"></label>
+        </div>
+        <div class="inline">
+          <label>Crop width <input type="number" name="crop_w" min="1" placeholder="width"></label>
+          <label>Crop height <input type="number" name="crop_h" min="1" placeholder="height"></label>
+        </div>
+        <div class="inline">
+          <label>Resize width <input type="number" name="crop_resize_w" min="1" placeholder="auto"></label>
+          <label>Resize height <input type="number" name="crop_resize_h" min="1" placeholder="auto"></label>
+        </div>
+        <button type="submit">Crop &amp; export</button>
+        <div class="status" id="cropStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="cropPreviewPlaceholder">Crop result will appear here.</span>
+        <img id="cropPreview" alt="Crop result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="cropLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabBgRemover" style="display:none;">
+    <section class="panel">
+      <h2>Background Remover</h2>
+      <form id="bgForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="bg_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="bg_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Pick a key color to knock out; outputs a transparent image or a pure alpha mask.</small>
+        </label>
+        <div class="inline">
+          <label>Key tolerance <input type="number" name="bg_tolerance" min="0" max="255" value="12"></label>
+          <label><input type="checkbox" name="bg_auto_edge" checked> Edge-aware cutout</label>
+        </div>
+        <label>
+          Key color
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="bgKeyColor" value="#00ff00" style="flex:0 0 56px;">
+            <input type="range" id="bgKeyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="bg_chroma_key" placeholder="rgba or #rrggbb" aria-label="BG key color">
+            <button type="button" class="ghost small" id="bgKeyEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <div class="inline">
+          <label><input type="checkbox" name="bg_to_mask"> Output alpha mask instead of keyed image</label>
+          <label><input type="checkbox" name="bg_grayscale"> Grayscale after removal</label>
+        </div>
+        <button type="submit">Remove background</button>
+        <div class="status" id="bgStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="bgPreviewPlaceholder">Result will appear here.</span>
+        <img id="bgPreview" alt="Background removed" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="bgLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabFitTool" style="display:none;">
+    <section class="panel">
+      <h2>Square Fit</h2>
+      <form id="fitForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="fit_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="fit_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Resize to a square and optionally flatten the background.</small>
+        </label>
+        <div class="inline">
+          <label>Target size (px) <input type="number" name="fit_size" min="16" value="512"></label>
+          <label>Optional rotate (deg) <input type="number" name="fit_rotate" step="1" value="0"></label>
+        </div>
+        <label>
+          Flatten background
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="fitBgColor" value="#0f131a" style="flex:0 0 56px;">
+            <input type="range" id="fitBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="fit_flatten_color" placeholder="rgba or #rrggbb" aria-label="Fit BG color">
+            <button type="button" class="ghost small" id="fitBgEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <button type="submit">Fit image</button>
+        <div class="status" id="fitStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="fitPreviewPlaceholder">Result will appear here.</span>
+        <img id="fitPreview" alt="Fit result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="fitLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabMonoTool" style="display:none;">
+    <section class="panel">
+      <h2>Mono / Invert</h2>
+      <form id="monoForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="mono_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="mono_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+        </label>
+        <div class="inline">
+          <label>Brightness <input type="number" name="mono_brightness" step="0.1" min="0.1" placeholder="1.0"></label>
+          <label>Contrast <input type="number" name="mono_contrast" step="0.1" min="0.1" placeholder="1.0"></label>
+        </div>
+        <div class="inline">
+          <label><input type="checkbox" name="mono_grayscale" checked> Grayscale</label>
+          <label><input type="checkbox" name="mono_invert"> Invert colors</label>
+        </div>
+        <button type="submit">Apply mono</button>
+        <div class="status" id="monoStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="monoPreviewPlaceholder">Result will appear here.</span>
+        <img id="monoPreview" alt="Mono result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="monoLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabBlurTool" style="display:none;">
+    <section class="panel">
+      <h2>Blur / Rotate</h2>
+      <form id="blurForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="blur_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="blur_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+        </label>
+        <div class="inline">
+          <label>Blur radius <input type="number" name="blur_radius" step="0.5" min="0" value="2"></label>
+          <label>Rotate (deg) <input type="number" name="blur_rotate" step="1" value="0"></label>
+        </div>
+        <button type="submit">Apply blur/rotate</button>
+        <div class="status" id="blurStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="blurPreviewPlaceholder">Result will appear here.</span>
+        <img id="blurPreview" alt="Blur result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="blurLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabFlipTool" style="display:none;">
+    <section class="panel">
+      <h2>Flip Studio</h2>
+      <form id="flipForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="flip_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="flip_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+        </label>
+        <div class="inline">
+          <label><input type="checkbox" name="flip_h"> Flip horizontal</label>
+          <label><input type="checkbox" name="flip_v"> Flip vertical</label>
+          <label>Rotate (deg) <input type="number" name="flip_rotate" step="1" value="0"></label>
+        </div>
+        <button type="submit">Flip image</button>
+        <div class="status" id="flipStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="flipPreviewPlaceholder">Result will appear here.</span>
+        <img id="flipPreview" alt="Flip result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="flipLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabToneTool" style="display:none;">
+    <section class="panel">
+      <h2>Tone Balance</h2>
+      <form id="toneForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="tone_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="tone_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+        </label>
+        <div class="inline">
+          <label>Brightness <input type="number" name="tone_brightness" step="0.1" min="0.1" placeholder="1.0"></label>
+          <label>Contrast <input type="number" name="tone_contrast" step="0.1" min="0.1" placeholder="1.0"></label>
+        </div>
+        <div class="inline">
+          <label>Blur radius <input type="number" name="tone_blur" step="0.5" min="0" value="0"></label>
+          <label>Rotate (deg) <input type="number" name="tone_rotate" step="1" value="0"></label>
+        </div>
+        <button type="submit">Balance tones</button>
+        <div class="status" id="toneStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="tonePreviewPlaceholder">Result will appear here.</span>
+        <img id="tonePreview" alt="Tone result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="toneLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabCanvasPad" style="display:none;">
+    <section class="panel">
+      <h2>Canvas Pad</h2>
+      <form id="padForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="pad_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="pad_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Flatten against a color and optionally resize.</small>
+        </label>
+        <div class="inline">
+          <label>Resize width <input type="number" name="pad_width" min="1" placeholder="auto"></label>
+          <label>Resize height <input type="number" name="pad_height" min="1" placeholder="auto"></label>
+        </div>
+        <label>
+          Canvas color
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="padBgColor" value="#0f131a" style="flex:0 0 56px;">
+            <input type="range" id="padBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+            <input type="text" name="pad_flatten_color" placeholder="rgba or #rrggbb" aria-label="Pad color">
+            <button type="button" class="ghost small" id="padBgEyedrop">Eyedrop</button>
+          </div>
+        </label>
+        <button type="submit">Pad &amp; resize</button>
+        <div class="status" id="padStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="padPreviewPlaceholder">Result will appear here.</span>
+        <img id="padPreview" alt="Pad result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="padLinks"></div>
+    </section>
+  </main>
+
+  <main id="tabRotateCrop" style="display:none;">
+    <section class="panel">
+      <h2>Rotate &amp; Crop</h2>
+      <form id="rotForm">
+        <label>
+          Image file (or paste artifact URL)
+          <input type="file" name="rot_image" accept=".png,.jpg,.jpeg,.webp">
+          <input type="text" name="rot_artifact_url" placeholder="/artifacts/foo.png" style="margin-top:6px;">
+          <small>Crop bounds then rotate; optionally resize for export.</small>
+        </label>
+        <div class="inline">
+          <label>Crop X <input type="number" name="rot_crop_x" min="0" placeholder="0"></label>
+          <label>Crop Y <input type="number" name="rot_crop_y" min="0" placeholder="0"></label>
+        </div>
+        <div class="inline">
+          <label>Crop width <input type="number" name="rot_crop_w" min="1" placeholder="width"></label>
+          <label>Crop height <input type="number" name="rot_crop_h" min="1" placeholder="height"></label>
+        </div>
+        <div class="inline">
+          <label>Rotate (deg) <input type="number" name="rot_rotate" step="1" value="0"></label>
+          <label>Resize width <input type="number" name="rot_resize_w" min="1" placeholder="auto"></label>
+          <label>Resize height <input type="number" name="rot_resize_h" min="1" placeholder="auto"></label>
+        </div>
+        <button type="submit">Crop &amp; rotate</button>
+        <div class="status" id="rotStatus"></div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span id="rotPreviewPlaceholder">Result will appear here.</span>
+        <img id="rotPreview" alt="Rotate crop result" style="display:none; max-height:320px;">
+      </div>
+      <div class="links" id="rotLinks"></div>
+    </section>
+  </main>
+    </div>
+  </div>
 
   <script>
     const form = document.getElementById("uploadForm");
@@ -436,6 +1207,10 @@
     const bgAlpha = document.getElementById("bgAlpha");
     const keyColor = document.getElementById("keyColor");
     const keyAlpha = document.getElementById("keyAlpha");
+    const bgEyedrop = document.getElementById("bgEyedrop");
+    const keyEyedrop = document.getElementById("keyEyedrop");
+    const framePreset = document.getElementById("framePreset");
+    const gridPreset = document.getElementById("gridPreset");
     const maskToggle = document.getElementById("maskToggle");
     const checkerToggle = document.getElementById("checkerToggle");
     const canvasBgColor = document.getElementById("canvasBgColor");
@@ -446,8 +1221,6 @@
     const imgPreview = document.getElementById("imgPreview");
     const imgPreviewPlaceholder = document.getElementById("imgPreviewPlaceholder");
     const imgLinks = document.getElementById("imgLinks");
-    const tabSpritesBtn = document.getElementById("tabSpritesBtn");
-    const tabImagesBtn = document.getElementById("tabImagesBtn");
     const tabSprites = document.getElementById("tabSprites");
     const tabImageLab = document.getElementById("tabImageLab");
     const imgBgColor = document.getElementById("imgBgColor");
@@ -458,6 +1231,98 @@
     const imgFrameWidth = document.getElementById("imgFrameWidth");
     const imgFrameHeight = document.getElementById("imgFrameHeight");
     const imgColumns = document.getElementById("imgColumns");
+    const imgKeyEyedrop = document.getElementById("imgKeyEyedrop");
+    const navLinks = document.querySelectorAll(".nav-link");
+    const navToggle = document.getElementById("navToggle");
+    const sidebar = document.getElementById("sidebar");
+    const resizeForm = document.getElementById("resizeForm");
+    const resizeStatus = document.getElementById("resizeStatus");
+    const resizePreview = document.getElementById("resizePreview");
+    const resizePreviewPlaceholder = document.getElementById("resizePreviewPlaceholder");
+    const resizeLinks = document.getElementById("resizeLinks");
+    const resizeBgColor = document.getElementById("resizeBgColor");
+    const resizeBgAlpha = document.getElementById("resizeBgAlpha");
+    const resizeBgEyedrop = document.getElementById("resizeBgEyedrop");
+    const studioForm = document.getElementById("studioForm");
+    const studioStatus = document.getElementById("studioStatus");
+    const studioPreview = document.getElementById("studioPreview");
+    const studioPreviewPlaceholder = document.getElementById("studioPreviewPlaceholder");
+    const studioLinks = document.getElementById("studioLinks");
+    const studioKeyColor = document.getElementById("studioKeyColor");
+    const studioKeyAlpha = document.getElementById("studioKeyAlpha");
+    const studioKeyEyedrop = document.getElementById("studioKeyEyedrop");
+    const studioBgColor = document.getElementById("studioBgColor");
+    const studioBgAlpha = document.getElementById("studioBgAlpha");
+    const studioBgEyedrop = document.getElementById("studioBgEyedrop");
+    const maskForm = document.getElementById("maskForm");
+    const maskStatus = document.getElementById("maskStatus");
+    const maskPreview = document.getElementById("maskPreview");
+    const maskPreviewPlaceholder = document.getElementById("maskPreviewPlaceholder");
+    const maskLinks = document.getElementById("maskLinks");
+    const maskKeyColor = document.getElementById("maskKeyColor");
+    const maskKeyAlpha = document.getElementById("maskKeyAlpha");
+    const maskKeyEyedrop = document.getElementById("maskKeyEyedrop");
+    const colorForm = document.getElementById("colorForm");
+    const colorStatus = document.getElementById("colorStatus");
+    const colorPreview = document.getElementById("colorPreview");
+    const colorPreviewPlaceholder = document.getElementById("colorPreviewPlaceholder");
+    const colorLinks = document.getElementById("colorLinks");
+    const cropForm = document.getElementById("cropForm");
+    const cropStatus = document.getElementById("cropStatus");
+    const cropPreview = document.getElementById("cropPreview");
+    const cropPreviewPlaceholder = document.getElementById("cropPreviewPlaceholder");
+    const cropLinks = document.getElementById("cropLinks");
+    const bgForm = document.getElementById("bgForm");
+    const bgStatus = document.getElementById("bgStatus");
+    const bgPreview = document.getElementById("bgPreview");
+    const bgPreviewPlaceholder = document.getElementById("bgPreviewPlaceholder");
+    const bgLinks = document.getElementById("bgLinks");
+    const bgKeyColorInput = document.getElementById("bgKeyColor");
+    const bgKeyAlphaInput = document.getElementById("bgKeyAlpha");
+    const bgKeyEyedrop = document.getElementById("bgKeyEyedrop");
+    const fitForm = document.getElementById("fitForm");
+    const fitStatus = document.getElementById("fitStatus");
+    const fitPreview = document.getElementById("fitPreview");
+    const fitPreviewPlaceholder = document.getElementById("fitPreviewPlaceholder");
+    const fitLinks = document.getElementById("fitLinks");
+    const fitBgColor = document.getElementById("fitBgColor");
+    const fitBgAlpha = document.getElementById("fitBgAlpha");
+    const fitBgEyedrop = document.getElementById("fitBgEyedrop");
+    const monoForm = document.getElementById("monoForm");
+    const monoStatus = document.getElementById("monoStatus");
+    const monoPreview = document.getElementById("monoPreview");
+    const monoPreviewPlaceholder = document.getElementById("monoPreviewPlaceholder");
+    const monoLinks = document.getElementById("monoLinks");
+    const blurForm = document.getElementById("blurForm");
+    const blurStatus = document.getElementById("blurStatus");
+    const blurPreview = document.getElementById("blurPreview");
+    const blurPreviewPlaceholder = document.getElementById("blurPreviewPlaceholder");
+    const blurLinks = document.getElementById("blurLinks");
+    const flipForm = document.getElementById("flipForm");
+    const flipStatus = document.getElementById("flipStatus");
+    const flipPreview = document.getElementById("flipPreview");
+    const flipPreviewPlaceholder = document.getElementById("flipPreviewPlaceholder");
+    const flipLinks = document.getElementById("flipLinks");
+    const toneForm = document.getElementById("toneForm");
+    const toneStatus = document.getElementById("toneStatus");
+    const tonePreview = document.getElementById("tonePreview");
+    const tonePreviewPlaceholder = document.getElementById("tonePreviewPlaceholder");
+    const toneLinks = document.getElementById("toneLinks");
+    const padForm = document.getElementById("padForm");
+    const padStatus = document.getElementById("padStatus");
+    const padPreview = document.getElementById("padPreview");
+    const padPreviewPlaceholder = document.getElementById("padPreviewPlaceholder");
+    const padLinks = document.getElementById("padLinks");
+    const padBgColor = document.getElementById("padBgColor");
+    const padBgAlpha = document.getElementById("padBgAlpha");
+    const padBgEyedrop = document.getElementById("padBgEyedrop");
+    const rotForm = document.getElementById("rotForm");
+    const rotStatus = document.getElementById("rotStatus");
+    const rotPreview = document.getElementById("rotPreview");
+    const rotPreviewPlaceholder = document.getElementById("rotPreviewPlaceholder");
+    const rotLinks = document.getElementById("rotLinks");
+    const libraryList = document.getElementById("libraryList");
+    const selectedArtifactEl = document.getElementById("selectedArtifact");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -465,6 +1330,21 @@
       if (trimmed === "") return null;
       const parsed = Number(trimmed);
       return Number.isFinite(parsed) ? parsed : null;
+    };
+    let selectedArtifact = "";
+    const updateStatus = (el, message, isError = false, success = false) => {
+      if (!el) return;
+      el.textContent = message;
+      el.className = "status";
+      if (isError) el.classList.add("error");
+      if (success) el.classList.add("success");
+    };
+    const setSelectedArtifact = (url) => {
+      selectedArtifact = url;
+      selectedArtifactEl.textContent = url || "None";
+      document.querySelectorAll('[name$="_artifact_url"]').forEach((input) => {
+        input.value = url;
+      });
     };
 
     let spriteSheetImage = null;
@@ -477,6 +1357,17 @@
     let canvasBg = { r: 10, g: 16, b: 32, a: 255 };
     let imgSheetImage = null;
     let imgAnimTimer = null;
+    const fetchArtifactFile = async (url, fallbackName = "artifact.png") => {
+      const clean = url.trim();
+      if (!clean) return null;
+      const res = await fetch(clean);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch artifact (${res.status})`);
+      }
+      const blob = await res.blob();
+      const name = clean.split("/").pop() || fallbackName;
+      return new File([blob], name, { type: blob.type || "application/octet-stream" });
+    };
     const imgColorToRgba = () => {
       const hex = imgKeyColor.value.replace("#", "");
       const r = parseInt(hex.slice(0, 2), 16);
@@ -495,6 +1386,15 @@
       return `${r},${g},${b},${a}`;
     };
 
+    const hexToRgb = (hex) => {
+      const cleaned = hex.replace("#", "");
+      return {
+        r: parseInt(cleaned.slice(0, 2), 16),
+        g: parseInt(cleaned.slice(2, 4), 16),
+        b: parseInt(cleaned.slice(4, 6), 16),
+      };
+    };
+
     const rgbaFromPickers = (colorInput, alphaInput) => {
       const hex = colorInput.value.replace("#", "");
       const r = parseInt(hex.slice(0, 2), 16);
@@ -504,12 +1404,164 @@
       return `${r},${g},${b},${a}`;
     };
 
+    const applyManualColor = (inputEl, colorInput, alphaInput) => {
+      const val = inputEl.value.trim();
+      if (!val) return;
+      const rgbaMatch = val.match(/^\\s*(\\d{1,3})[, ]+(\\d{1,3})[, ]+(\\d{1,3})(?:[, ]+(\\d{1,3}))?\\s*$/);
+      const hexMatch = val.match(/^#?([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/);
+      let r, g, b, a;
+      if (rgbaMatch) {
+        r = Math.min(255, parseInt(rgbaMatch[1], 10));
+        g = Math.min(255, parseInt(rgbaMatch[2], 10));
+        b = Math.min(255, parseInt(rgbaMatch[3], 10));
+        a = Math.min(255, parseInt(rgbaMatch[4] ?? "255", 10));
+      } else if (hexMatch) {
+        const hex = hexMatch[1];
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+        a = hexMatch[2] ? parseInt(hexMatch[2], 16) : 255;
+      } else {
+        return;
+      }
+      colorInput.value = `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+      alphaInput.value = a;
+      inputEl.value = `${r},${g},${b},${a}`;
+    };
+
+    const setColorInputs = (colorInput, alphaInput, textInput, r, g, b, a = 255) => {
+      colorInput.value = `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+      alphaInput.value = a;
+      textInput.value = `${r},${g},${b},${a}`;
+    };
+
+    const dominantColorFromImage = (imageEl) => {
+      const width = imageEl.naturalWidth || imageEl.width;
+      const height = imageEl.naturalHeight || imageEl.height;
+      if (!width || !height) return null;
+      const maxSize = 220;
+      const scale = Math.min(1, maxSize / Math.max(width, height));
+      const w = Math.max(1, Math.floor(width * scale));
+      const h = Math.max(1, Math.floor(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(imageEl, 0, 0, w, h);
+      const data = ctx.getImageData(0, 0, w, h).data;
+      const counts = new Map();
+      for (let i = 0; i < data.length; i += 4) {
+        const a = data[i + 3];
+        if (a < 5) continue; // ignore transparent pixels
+        const key = `${data[i]},${data[i + 1]},${data[i + 2]},${a}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      let best = null;
+      let bestCount = 0;
+      counts.forEach((count, key) => {
+        if (count > bestCount) {
+          bestCount = count;
+          best = key;
+        }
+      });
+      if (!best) return null;
+      const [r, g, b, a] = best.split(",").map((n) => parseInt(n, 10));
+      return { r, g, b, a };
+    };
+
+    const pickFromScreen = async (colorInput, alphaInput, textInput, fallbackImage) => {
+      const apply = (r, g, b, a) => {
+        setColorInputs(colorInput, alphaInput, textInput, r, g, b, a);
+        if (textInput.name === "background_color" || textInput.name === "chroma_key_color") {
+          syncColorFields();
+        } else {
+          syncImgColorField();
+        }
+      };
+
+      if ("EyeDropper" in window) {
+        try {
+          const eye = new EyeDropper();
+          const result = await eye.open();
+          const { r, g, b } = hexToRgb(result.sRGBHex);
+          apply(r, g, b, 255);
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return;
+          console.warn("EyeDropper failed, falling back to preview", err);
+        }
+      }
+
+      if (fallbackImage) {
+        const dom = dominantColorFromImage(fallbackImage);
+        if (dom) {
+          apply(dom.r, dom.g, dom.b, dom.a);
+          return;
+        }
+      }
+      alert("Could not sample color; load a preview first.");
+    };
+
+    const resolveImageFile = async (fileInput, urlValue, fallbackName) => {
+      if (fileInput && fileInput.files && fileInput.files[0]) return fileInput.files[0];
+      if (!urlValue) return null;
+      return fetchArtifactFile(urlValue, fallbackName);
+    };
+
+    const processImageRequest = async (file, settings) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("settings", JSON.stringify(settings));
+      const res = await fetch("/api/process-image", { method: "POST", body: formData });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `Request failed (${res.status})`);
+      }
+      return res.json();
+    };
+
     const syncColorFields = () => {
       form.background_color.value = rgbaFromPickers(bgColor, bgAlpha);
       form.chroma_key_color.value = rgbaFromPickers(keyColor, keyAlpha);
     };
     [bgColor, bgAlpha, keyColor, keyAlpha].forEach((el) => el.addEventListener("input", syncColorFields));
+    form.background_color.addEventListener("change", () => applyManualColor(form.background_color, bgColor, bgAlpha));
+    form.chroma_key_color.addEventListener("change", () => applyManualColor(form.chroma_key_color, keyColor, keyAlpha));
+    bgEyedrop.addEventListener("click", () => pickFromScreen(bgColor, bgAlpha, form.background_color, spriteSheetImage || previewImg));
+    keyEyedrop.addEventListener("click", () => pickFromScreen(keyColor, keyAlpha, form.chroma_key_color, spriteSheetImage || previewImg));
     syncColorFields();
+
+    framePreset.addEventListener("change", () => {
+      const val = framePreset.value;
+      if (!val) return;
+      const [w, h] = val.split("x").map((n) => parseInt(n, 10));
+      form.output_width.value = w;
+      form.output_height.value = h;
+    });
+
+    gridPreset.addEventListener("change", () => {
+      const val = gridPreset.value;
+      if (!val) return;
+      const [c, r] = val.split("x").map((n) => parseInt(n, 10));
+      form.columns.value = c;
+      form.rows.value = r;
+      const total = Math.max(1, c * r);
+      form.frame_count.value = total;
+      fpsSlider.value = Math.max(4, Math.min(48, total));
+      if (animTimer) startAnimation();
+    });
+
+    const syncResizeColor = () => {
+      resizeForm.resize_flatten_color.value = rgbaFromPickers(resizeBgColor, resizeBgAlpha);
+    };
+    [resizeBgColor, resizeBgAlpha].forEach((el) => el.addEventListener("input", syncResizeColor));
+    resizeForm.resize_flatten_color.addEventListener("change", () =>
+      applyManualColor(resizeForm.resize_flatten_color, resizeBgColor, resizeBgAlpha)
+    );
+    resizeBgEyedrop.addEventListener("click", () =>
+      pickFromScreen(resizeBgColor, resizeBgAlpha, resizeForm.resize_flatten_color, resizePreview || previewImg)
+    );
+    syncResizeColor();
 
     const setKeyColor = (r, g, b, a) => {
       keyColor.value = `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
@@ -559,14 +1611,11 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const fileInput = form.video;
-      if (!fileInput.files.length) {
+      const files = Array.from(fileInput.files);
+      if (!files.length) {
         setStatus("Pick a video first.", true);
         return;
       }
-      setStatus("Uploading and generating...", false);
-      const formData = new FormData();
-      formData.append("video", fileInput.files[0]);
-
       const settings = {
         output_width: numOrNull(form.output_width.value),
         output_height: numOrNull(form.output_height.value),
@@ -586,21 +1635,27 @@
         auto_edge_cutout: form.auto_edge_cutout.checked,
         output_pattern: form.output_pattern.value.trim(),
       };
-      formData.append("settings", JSON.stringify(settings));
 
-      try {
-        const res = await fetch("/api/generate", { method: "POST", body: formData });
-        if (!res.ok) {
-          const detail = await res.json().catch(() => ({}));
-          throw new Error(detail.detail || `Request failed (${res.status})`);
+      for (const file of files) {
+        setStatus(`Processing ${file.name}...`, false);
+        const formData = new FormData();
+        formData.append("video", file);
+        formData.append("settings", JSON.stringify(settings));
+        try {
+          const res = await fetch("/api/generate", { method: "POST", body: formData });
+          if (!res.ok) {
+            const detail = await res.json().catch(() => ({}));
+            throw new Error(detail.detail || `Request failed (${res.status})`);
+          }
+          const data = await res.json();
+          lastResult = data;
+          showResult(data);
+          await refreshArtifacts();
+          setStatus(`Done: ${file.name}`, false, true);
+        } catch (err) {
+          setStatus(`${file.name}: ${err.message || "Generation failed."}`, true);
+          break;
         }
-        const data = await res.json();
-        lastResult = data;
-        setStatus("Spritesheet ready.", false, true);
-        showResult(data);
-        await refreshArtifacts();
-      } catch (err) {
-        setStatus(err.message || "Generation failed.", true);
       }
     });
 
@@ -631,6 +1686,8 @@
       meta.style.fontSize = "12px";
       meta.textContent = `Frames: ${data.frame_count} | Grid: ${data.columns}x${data.rows} | Frame: ${data.frame_width}x${data.frame_height} | Output: ${data.width}x${data.height}`;
       resultLinks.appendChild(meta);
+      const fpsTarget = Math.max(4, Math.min(48, data.frame_count || 12));
+      fpsSlider.value = fpsTarget;
     };
 
     const buildLink = (label, href) => {
@@ -648,10 +1705,14 @@
         const data = await res.json();
         const items = (data.images || []).sort().reverse();
         artifactList.innerHTML = "";
+        libraryList.innerHTML = "";
         if (!items.length) {
           const li = document.createElement("li");
           li.textContent = "No artifacts yet.";
           artifactList.appendChild(li);
+          const liLib = document.createElement("li");
+          liLib.textContent = "No artifacts yet.";
+          libraryList.appendChild(liLib);
           return;
         }
         items.forEach((href) => {
@@ -659,12 +1720,8 @@
           const name = href.split("/").pop();
           const deleteBtn = document.createElement("button");
           deleteBtn.textContent = "Delete";
-          deleteBtn.style.padding = "6px 10px";
-          deleteBtn.style.fontSize = "12px";
-          deleteBtn.style.boxShadow = "none";
-          deleteBtn.style.background = "#ef4444";
-          deleteBtn.style.color = "#fff";
-          deleteBtn.style.borderRadius = "6px";
+          deleteBtn.type = "button";
+          deleteBtn.className = "ghost danger small";
           deleteBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
             try {
@@ -702,6 +1759,11 @@
           right.appendChild(deleteBtn);
           li.appendChild(right);
           artifactList.appendChild(li);
+
+          const liLib = document.createElement("li");
+          liLib.textContent = name;
+          liLib.addEventListener("click", () => setSelectedArtifact(href));
+          libraryList.appendChild(liLib);
         });
       } catch (err) {
         console.error(err);
@@ -839,25 +1901,143 @@
     canvasBgAlpha.addEventListener("input", setCanvasBg);
     setCanvasBg();
 
-    // Tabs
-    const activateTab = (tab) => {
-      const spriteActive = tab === "sprites";
-      tabSprites.style.display = spriteActive ? "block" : "none";
-      document.querySelector('main:not(#tabImageLab)').style.display = spriteActive ? "grid" : "none";
-      tabImageLab.style.display = spriteActive ? "none" : "grid";
-      tabSpritesBtn.setAttribute("aria-pressed", spriteActive);
-      tabImagesBtn.setAttribute("aria-pressed", !spriteActive);
+    // Navigation
+    const setView = (view) => {
+      const views = {
+        sprites: tabSprites,
+        images: tabImageLab,
+        quickResize: document.getElementById("tabQuickResize"),
+        maskMaker: document.getElementById("tabMaskMaker"),
+        colorTuner: document.getElementById("tabColorTuner"),
+        cropper: document.getElementById("tabCropper"),
+        bgRemover: document.getElementById("tabBgRemover"),
+        fitTool: document.getElementById("tabFitTool"),
+        monoTool: document.getElementById("tabMonoTool"),
+        blurTool: document.getElementById("tabBlurTool"),
+        flipTool: document.getElementById("tabFlipTool"),
+        toneTool: document.getElementById("tabToneTool"),
+        canvasPad: document.getElementById("tabCanvasPad"),
+        rotateCrop: document.getElementById("tabRotateCrop"),
+        imageStudio: document.getElementById("tabImageStudio"),
+        library: document.getElementById("tabLibrary"),
+      };
+      Object.entries(views).forEach(([key, el]) => {
+        if (!el) return;
+        el.style.display = key === view ? "grid" : "none";
+      });
+      navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target === view));
     };
-    tabSpritesBtn.addEventListener("click", () => activateTab("sprites"));
-    tabImagesBtn.addEventListener("click", () => activateTab("images"));
-    activateTab("sprites");
+    navLinks.forEach((link) => link.addEventListener("click", () => setView(link.dataset.target)));
+    navToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      navToggle.textContent = sidebar.classList.contains("collapsed") ? "Expand menu" : "Collapse menu";
+    });
+    setView("sprites");
 
     // Image lab
     const syncImgColorField = () => {
       imageForm.img_chroma_key.value = imgColorToRgba();
     };
     [imgKeyColor, imgKeyAlpha].forEach((el) => el.addEventListener("input", syncImgColorField));
+    imageForm.img_chroma_key.addEventListener("change", () => applyManualColor(imageForm.img_chroma_key, imgKeyColor, imgKeyAlpha));
+    imgKeyEyedrop.addEventListener("click", () => pickFromScreen(imgKeyColor, imgKeyAlpha, imageForm.img_chroma_key, imgSheetImage || imgPreview));
     syncImgColorField();
+
+    const maskColorToRgba = () => {
+      const hex = maskKeyColor.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(maskKeyAlpha.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+    const syncMaskColor = () => {
+      maskForm.mask_chroma_key.value = maskColorToRgba();
+    };
+    [maskKeyColor, maskKeyAlpha].forEach((el) => el.addEventListener("input", syncMaskColor));
+    maskForm.mask_chroma_key.addEventListener("change", () =>
+      applyManualColor(maskForm.mask_chroma_key, maskKeyColor, maskKeyAlpha)
+    );
+    maskKeyEyedrop.addEventListener("click", () =>
+      pickFromScreen(maskKeyColor, maskKeyAlpha, maskForm.mask_chroma_key, maskPreview || imgPreview || spriteSheetImage)
+    );
+    syncMaskColor();
+
+    const studioKeyToRgba = () => {
+      const hex = studioKeyColor.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(studioKeyAlpha.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+    const syncStudioKey = () => {
+      studioForm.studio_chroma_key.value = studioKeyToRgba();
+    };
+    [studioKeyColor, studioKeyAlpha].forEach((el) => el.addEventListener("input", syncStudioKey));
+    studioForm.studio_chroma_key.addEventListener("change", () =>
+      applyManualColor(studioForm.studio_chroma_key, studioKeyColor, studioKeyAlpha)
+    );
+    studioKeyEyedrop.addEventListener("click", () =>
+      pickFromScreen(studioKeyColor, studioKeyAlpha, studioForm.studio_chroma_key, studioPreview || imgPreview || spriteSheetImage)
+    );
+    syncStudioKey();
+
+    const syncStudioBg = () => {
+      studioForm.studio_flatten.value = rgbaFromPickers(studioBgColor, studioBgAlpha);
+    };
+    [studioBgColor, studioBgAlpha].forEach((el) => el.addEventListener("input", syncStudioBg));
+    studioForm.studio_flatten.addEventListener("change", () =>
+      applyManualColor(studioForm.studio_flatten, studioBgColor, studioBgAlpha)
+    );
+    studioBgEyedrop.addEventListener("click", () =>
+      pickFromScreen(studioBgColor, studioBgAlpha, studioForm.studio_flatten, studioPreview || imgPreview || spriteSheetImage)
+    );
+    syncStudioBg();
+
+    const bgColorToRgba = () => {
+      const hex = bgKeyColorInput.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(bgKeyAlphaInput.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+    const syncBgColor = () => {
+      bgForm.bg_chroma_key.value = bgColorToRgba();
+    };
+    [bgKeyColorInput, bgKeyAlphaInput].forEach((el) => el.addEventListener("input", syncBgColor));
+    bgForm.bg_chroma_key.addEventListener("change", () =>
+      applyManualColor(bgForm.bg_chroma_key, bgKeyColorInput, bgKeyAlphaInput)
+    );
+    bgKeyEyedrop.addEventListener("click", () =>
+      pickFromScreen(bgKeyColorInput, bgKeyAlphaInput, bgForm.bg_chroma_key, bgPreview || imgPreview || spriteSheetImage)
+    );
+    syncBgColor();
+
+    const syncFitColor = () => {
+      fitForm.fit_flatten_color.value = rgbaFromPickers(fitBgColor, fitBgAlpha);
+    };
+    [fitBgColor, fitBgAlpha].forEach((el) => el.addEventListener("input", syncFitColor));
+    fitForm.fit_flatten_color.addEventListener("change", () =>
+      applyManualColor(fitForm.fit_flatten_color, fitBgColor, fitBgAlpha)
+    );
+    fitBgEyedrop.addEventListener("click", () =>
+      pickFromScreen(fitBgColor, fitBgAlpha, fitForm.fit_flatten_color, fitPreview || previewImg || spriteSheetImage)
+    );
+    syncFitColor();
+
+    const syncPadColor = () => {
+      padForm.pad_flatten_color.value = rgbaFromPickers(padBgColor, padBgAlpha);
+    };
+    [padBgColor, padBgAlpha].forEach((el) => el.addEventListener("input", syncPadColor));
+    padForm.pad_flatten_color.addEventListener("change", () =>
+      applyManualColor(padForm.pad_flatten_color, padBgColor, padBgAlpha)
+    );
+    padBgEyedrop.addEventListener("click", () =>
+      pickFromScreen(padBgColor, padBgAlpha, padForm.pad_flatten_color, padPreview || previewImg || spriteSheetImage)
+    );
+    syncPadColor();
 
     imageForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -973,6 +2153,483 @@
         if (imgAnimTimer) startImgAnimation();
       })
     );
+
+    // Quick resize
+    resizeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(resizeForm.resize_image, resizeForm.resize_artifact_url.value, "resize_input.png");
+      } catch (err) {
+        updateStatus(resizeStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(resizeStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        resize_width: numOrNull(resizeForm.resize_width.value),
+        resize_height: numOrNull(resizeForm.resize_height.value),
+      };
+      const flattenColor = resizeForm.resize_flatten_color.value.trim();
+      const pickerColor = rgbaFromPickers(resizeBgColor, resizeBgAlpha);
+      if (flattenColor || resizeBgAlpha.value !== "255" || resizeBgColor.value !== "#0f131a") {
+        settings.flatten_background = flattenColor || pickerColor;
+      }
+      updateStatus(resizeStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        resizePreview.src = `${data.image_url}?t=${Date.now()}`;
+        resizePreview.style.display = "block";
+        resizePreviewPlaceholder.style.display = "none";
+        resizeLinks.innerHTML = "";
+        resizeLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(resizeStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(resizeStatus, err.message || "Resize failed", true);
+      }
+    });
+
+    // Mask builder
+    maskForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(maskForm.mask_image, maskForm.mask_artifact_url.value, "mask_input.png");
+      } catch (err) {
+        updateStatus(maskStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(maskStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        chroma_key_color: maskForm.mask_chroma_key.value.trim(),
+        chroma_key_tolerance: numOrNull(maskForm.mask_tolerance.value) ?? 12,
+        auto_edge_cutout: maskForm.mask_auto_edge.checked,
+        to_mask: maskForm.mask_to_mask.checked,
+      };
+      updateStatus(maskStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        maskPreview.src = `${data.image_url}?t=${Date.now()}`;
+        maskPreview.style.display = "block";
+        maskPreviewPlaceholder.style.display = "none";
+        maskLinks.innerHTML = "";
+        maskLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(maskStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(maskStatus, err.message || "Mask build failed", true);
+      }
+    });
+
+    // Color tuner
+    colorForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(colorForm.color_image, colorForm.color_artifact_url.value, "color_input.png");
+      } catch (err) {
+        updateStatus(colorStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(colorStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        brightness: numOrNull(colorForm.color_brightness.value),
+        contrast: numOrNull(colorForm.color_contrast.value),
+        blur_radius: numOrNull(colorForm.color_blur.value),
+        rotate_degrees: numOrNull(colorForm.color_rotate.value),
+        grayscale: colorForm.color_grayscale.checked,
+        invert_colors: colorForm.color_invert.checked,
+        flip_horizontal: colorForm.color_flip_h.checked,
+        flip_vertical: colorForm.color_flip_v.checked,
+      };
+      updateStatus(colorStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        colorPreview.src = `${data.image_url}?t=${Date.now()}`;
+        colorPreview.style.display = "block";
+        colorPreviewPlaceholder.style.display = "none";
+        colorLinks.innerHTML = "";
+        colorLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(colorStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(colorStatus, err.message || "Color tune failed", true);
+      }
+    });
+
+    // Image studio (merged tools)
+    studioForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const files = Array.from(studioForm.studio_images.files);
+      let fileQueue = files;
+      if (!fileQueue.length && selectedArtifact) {
+        try {
+          const artifactFile = await fetchArtifactFile(selectedArtifact, "artifact.png");
+          fileQueue = [artifactFile];
+        } catch (err) {
+          updateStatus(studioStatus, err.message || "Could not load artifact", true);
+          return;
+        }
+      }
+      if (!fileQueue.length) {
+        updateStatus(studioStatus, "Provide at least one file or pick an artifact.", true);
+        return;
+      }
+      const settings = {
+        resize_width: numOrNull(studioForm.studio_resize_w.value),
+        resize_height: numOrNull(studioForm.studio_resize_h.value),
+        crop_x: numOrNull(studioForm.studio_crop_x.value),
+        crop_y: numOrNull(studioForm.studio_crop_y.value),
+        crop_width: numOrNull(studioForm.studio_crop_w.value),
+        crop_height: numOrNull(studioForm.studio_crop_h.value),
+        rotate_degrees: numOrNull(studioForm.studio_rotate.value),
+        blur_radius: numOrNull(studioForm.studio_blur.value),
+        brightness: numOrNull(studioForm.studio_brightness.value),
+        contrast: numOrNull(studioForm.studio_contrast.value),
+        chroma_key_color: studioForm.studio_chroma_key.value.trim(),
+        chroma_key_tolerance: numOrNull(studioForm.studio_key_tolerance.value) ?? 12,
+        auto_edge_cutout: studioForm.studio_auto_edge.checked,
+        flatten_background: studioForm.studio_flatten.value.trim(),
+        grayscale: studioForm.studio_grayscale.checked,
+        invert_colors: studioForm.studio_invert.checked,
+        flip_horizontal: studioForm.studio_flip_h.checked,
+        flip_vertical: studioForm.studio_flip_v.checked,
+        to_mask: studioForm.studio_to_mask.checked,
+      };
+      for (const file of fileQueue) {
+        updateStatus(studioStatus, `Processing ${file.name}...`);
+        try {
+          const data = await processImageRequest(file, settings);
+          studioPreview.src = `${data.image_url}?t=${Date.now()}`;
+          studioPreview.style.display = "block";
+          studioPreviewPlaceholder.style.display = "none";
+          studioLinks.innerHTML = "";
+          studioLinks.appendChild(buildLink("Download result", data.image_url));
+          updateStatus(studioStatus, `Done: ${file.name}`, false, true);
+          setSelectedArtifact(data.image_url);
+          await refreshArtifacts();
+        } catch (err) {
+          updateStatus(studioStatus, `${file.name}: ${err.message || "Studio failed"}`, true);
+          break;
+        }
+      }
+    });
+
+    // Cropper
+    cropForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(cropForm.crop_image, cropForm.crop_artifact_url.value, "crop_input.png");
+      } catch (err) {
+        updateStatus(cropStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(cropStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        crop_x: numOrNull(cropForm.crop_x.value),
+        crop_y: numOrNull(cropForm.crop_y.value),
+        crop_width: numOrNull(cropForm.crop_w.value),
+        crop_height: numOrNull(cropForm.crop_h.value),
+        resize_width: numOrNull(cropForm.crop_resize_w.value),
+        resize_height: numOrNull(cropForm.crop_resize_h.value),
+      };
+      updateStatus(cropStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        cropPreview.src = `${data.image_url}?t=${Date.now()}`;
+        cropPreview.style.display = "block";
+        cropPreviewPlaceholder.style.display = "none";
+        cropLinks.innerHTML = "";
+        cropLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(cropStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(cropStatus, err.message || "Crop failed", true);
+      }
+    });
+
+    // Background remover
+    bgForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(bgForm.bg_image, bgForm.bg_artifact_url.value, "bg_input.png");
+      } catch (err) {
+        updateStatus(bgStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(bgStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        chroma_key_color: bgForm.bg_chroma_key.value.trim(),
+        chroma_key_tolerance: numOrNull(bgForm.bg_tolerance.value) ?? 12,
+        auto_edge_cutout: bgForm.bg_auto_edge.checked,
+        to_mask: bgForm.bg_to_mask.checked,
+        grayscale: bgForm.bg_grayscale.checked,
+      };
+      updateStatus(bgStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        bgPreview.src = `${data.image_url}?t=${Date.now()}`;
+        bgPreview.style.display = "block";
+        bgPreviewPlaceholder.style.display = "none";
+        bgLinks.innerHTML = "";
+        bgLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(bgStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(bgStatus, err.message || "Background removal failed", true);
+      }
+    });
+
+    // Square fit
+    fitForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(fitForm.fit_image, fitForm.fit_artifact_url.value, "fit_input.png");
+      } catch (err) {
+        updateStatus(fitStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(fitStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const size = numOrNull(fitForm.fit_size.value);
+      const settings = {
+        resize_width: size,
+        resize_height: size,
+        rotate_degrees: numOrNull(fitForm.fit_rotate.value),
+      };
+      const flatten = fitForm.fit_flatten_color.value.trim();
+      if (flatten) settings.flatten_background = flatten;
+      updateStatus(fitStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        fitPreview.src = `${data.image_url}?t=${Date.now()}`;
+        fitPreview.style.display = "block";
+        fitPreviewPlaceholder.style.display = "none";
+        fitLinks.innerHTML = "";
+        fitLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(fitStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(fitStatus, err.message || "Fit failed", true);
+      }
+    });
+
+    // Mono / invert
+    monoForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(monoForm.mono_image, monoForm.mono_artifact_url.value, "mono_input.png");
+      } catch (err) {
+        updateStatus(monoStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(monoStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        brightness: numOrNull(monoForm.mono_brightness.value),
+        contrast: numOrNull(monoForm.mono_contrast.value),
+        grayscale: monoForm.mono_grayscale.checked,
+        invert_colors: monoForm.mono_invert.checked,
+      };
+      updateStatus(monoStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        monoPreview.src = `${data.image_url}?t=${Date.now()}`;
+        monoPreview.style.display = "block";
+        monoPreviewPlaceholder.style.display = "none";
+        monoLinks.innerHTML = "";
+        monoLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(monoStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(monoStatus, err.message || "Mono failed", true);
+      }
+    });
+
+    // Blur / rotate
+    blurForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(blurForm.blur_image, blurForm.blur_artifact_url.value, "blur_input.png");
+      } catch (err) {
+        updateStatus(blurStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(blurStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        blur_radius: numOrNull(blurForm.blur_radius.value),
+        rotate_degrees: numOrNull(blurForm.blur_rotate.value),
+      };
+      updateStatus(blurStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        blurPreview.src = `${data.image_url}?t=${Date.now()}`;
+        blurPreview.style.display = "block";
+        blurPreviewPlaceholder.style.display = "none";
+        blurLinks.innerHTML = "";
+        blurLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(blurStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(blurStatus, err.message || "Blur failed", true);
+      }
+    });
+
+    // Flip studio
+    flipForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(flipForm.flip_image, flipForm.flip_artifact_url.value, "flip_input.png");
+      } catch (err) {
+        updateStatus(flipStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(flipStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        flip_horizontal: flipForm.flip_h.checked,
+        flip_vertical: flipForm.flip_v.checked,
+        rotate_degrees: numOrNull(flipForm.flip_rotate.value),
+      };
+      updateStatus(flipStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        flipPreview.src = `${data.image_url}?t=${Date.now()}`;
+        flipPreview.style.display = "block";
+        flipPreviewPlaceholder.style.display = "none";
+        flipLinks.innerHTML = "";
+        flipLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(flipStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(flipStatus, err.message || "Flip failed", true);
+      }
+    });
+
+    // Tone balance
+    toneForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(toneForm.tone_image, toneForm.tone_artifact_url.value, "tone_input.png");
+      } catch (err) {
+        updateStatus(toneStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(toneStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        brightness: numOrNull(toneForm.tone_brightness.value),
+        contrast: numOrNull(toneForm.tone_contrast.value),
+        blur_radius: numOrNull(toneForm.tone_blur.value),
+        rotate_degrees: numOrNull(toneForm.tone_rotate.value),
+      };
+      updateStatus(toneStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        tonePreview.src = `${data.image_url}?t=${Date.now()}`;
+        tonePreview.style.display = "block";
+        tonePreviewPlaceholder.style.display = "none";
+        toneLinks.innerHTML = "";
+        toneLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(toneStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(toneStatus, err.message || "Tone balance failed", true);
+      }
+    });
+
+    // Canvas pad
+    padForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(padForm.pad_image, padForm.pad_artifact_url.value, "pad_input.png");
+      } catch (err) {
+        updateStatus(padStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(padStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        resize_width: numOrNull(padForm.pad_width.value),
+        resize_height: numOrNull(padForm.pad_height.value),
+        flatten_background: padForm.pad_flatten_color.value.trim(),
+      };
+      updateStatus(padStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        padPreview.src = `${data.image_url}?t=${Date.now()}`;
+        padPreview.style.display = "block";
+        padPreviewPlaceholder.style.display = "none";
+        padLinks.innerHTML = "";
+        padLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(padStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(padStatus, err.message || "Pad failed", true);
+      }
+    });
+
+    // Rotate & crop
+    rotForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let file;
+      try {
+        file = await resolveImageFile(rotForm.rot_image, rotForm.rot_artifact_url.value, "rot_input.png");
+      } catch (err) {
+        updateStatus(rotStatus, err.message || "Could not load artifact", true);
+        return;
+      }
+      if (!file) {
+        updateStatus(rotStatus, "Provide a file or artifact URL", true);
+        return;
+      }
+      const settings = {
+        crop_x: numOrNull(rotForm.rot_crop_x.value),
+        crop_y: numOrNull(rotForm.rot_crop_y.value),
+        crop_width: numOrNull(rotForm.rot_crop_w.value),
+        crop_height: numOrNull(rotForm.rot_crop_h.value),
+        rotate_degrees: numOrNull(rotForm.rot_rotate.value),
+        resize_width: numOrNull(rotForm.rot_resize_w.value),
+        resize_height: numOrNull(rotForm.rot_resize_h.value),
+      };
+      updateStatus(rotStatus, "Processing...", false);
+      try {
+        const data = await processImageRequest(file, settings);
+        rotPreview.src = `${data.image_url}?t=${Date.now()}`;
+        rotPreview.style.display = "block";
+        rotPreviewPlaceholder.style.display = "none";
+        rotLinks.innerHTML = "";
+        rotLinks.appendChild(buildLink("Download result", data.image_url));
+        updateStatus(rotStatus, "Done.", false, true);
+      } catch (err) {
+        updateStatus(rotStatus, err.message || "Rotate/crop failed", true);
+      }
+    });
   </script>
 </body>
 </html>
