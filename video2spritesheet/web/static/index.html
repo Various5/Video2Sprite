@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video2SpriteSheet Web</title>
+  <style>
+    :root {
+      --bg: #0c1224;
+      --panel: #0f172a;
+      --muted: #9fb3c8;
+      --accent: #2dd4bf;
+      --accent-strong: #0ea5e9;
+      --border: #1f2a44;
+      --error: #f87171;
+      --success: #34d399;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "DM Sans", "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(45, 212, 191, 0.06), transparent 32%),
+                  radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.1), transparent 34%),
+                  linear-gradient(135deg, #0b1220, #0d1528);
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    header {
+      padding: 28px 32px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 34px);
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+    }
+    main {
+      padding: 0 32px 32px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 18px 22px;
+      box-shadow: var(--shadow);
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      letter-spacing: -0.3px;
+    }
+    form {
+      display: grid;
+      gap: 12px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    input[type="file"],
+    input[type="text"],
+    input[type="number"] {
+      background: #0a1020;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: #e5e7eb;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s ease, transform 0.2s ease;
+    }
+    input:focus {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .inline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #dbeafe;
+    }
+    .switch input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+    button {
+      background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+      border: none;
+      color: #0b1220;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 10px 30px rgba(45, 212, 191, 0.25);
+    }
+    button:hover { transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status.error { color: var(--error); }
+    .status.success { color: var(--success); }
+    .preview {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      min-height: 240px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #0a1020;
+      position: relative;
+    }
+    .checker {
+      background-image:
+        linear-gradient(45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.06) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.06) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.06) 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    }
+    .preview img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    .artifact-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .artifact-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0a1020;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: border 0.2s ease, transform 0.2s ease;
+    }
+    .artifact-list li:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .pill {
+      background: rgba(45, 212, 191, 0.14);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+    .links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      border-bottom: 1px dashed transparent;
+    }
+    .link:hover { border-color: var(--accent); }
+    .badge-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media (max-width: 720px) {
+      main { padding: 0 16px 24px; }
+      header { padding: 22px 16px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1>Video2SpriteSheet Web</h1>
+      <div class="subtitle">Drop in a clip, tune your sampling, ship a spritesheet + manifest.</div>
+    </div>
+    <div class="badge-row">
+      <span class="pill">FastAPI</span>
+      <span class="pill">On-device</span>
+      <span class="pill">No install for viewers</span>
+    </div>
+  </header>
+
+  <main>
+    <div style="display:flex; gap:12px; margin:0 0 12px 0;">
+      <button id="tabSpritesBtn" type="button" aria-pressed="true">Sprites</button>
+      <button id="tabImagesBtn" type="button" aria-pressed="false">Image Lab</button>
+    </div>
+    <section class="panel" id="tabSprites">
+      <h2>1) Upload &amp; configure</h2>
+      <form id="uploadForm">
+        <label>
+          Video file
+          <input type="file" name="video" accept=".mp4,.mov,.avi,.mkv,.webm" required>
+          <small id="metaHint" style="color: var(--muted);">Resolution/length filled after selecting a file.</small>
+        </label>
+        <div class="inline">
+          <label>Output width <input type="number" name="output_width" min="1" placeholder="Keep source"></label>
+          <label>Output height <input type="number" name="output_height" min="1" placeholder="Keep source"></label>
+        </div>
+        <div class="inline">
+          <label>Frame count <input type="number" name="frame_count" min="1" placeholder="Auto"></label>
+          <label>Frame interval (sec) <input type="number" name="frame_interval" min="0" step="0.01" placeholder="Auto"></label>
+        </div>
+        <div class="inline">
+          <label>Start time (sec) <input type="number" name="start_time" min="0" step="0.01"></label>
+          <label>End time (sec) <input type="number" name="end_time" min="0" step="0.01"></label>
+        </div>
+        <div class="inline">
+          <label>Grid columns <input type="number" name="columns" min="1" placeholder="Auto"></label>
+          <label>Grid rows <input type="number" name="rows" min="1" placeholder="Auto"></label>
+        </div>
+        <div class="inline">
+          <label>Max frames (0 = all) <input type="number" name="max_frames" min="0" placeholder="180 cap"></label>
+          <label>Padding (px) <input type="number" name="padding" min="0" max="64" value="0"></label>
+        </div>
+        <div class="inline">
+          <label>
+            Background
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="color" id="bgColor" value="#000000" style="flex:0 0 56px;">
+              <input type="range" id="bgAlpha" min="0" max="255" value="0" title="Alpha" style="flex:1;">
+              <input type="text" name="background_color" placeholder="rgba" readonly>
+            </div>
+          </label>
+          <label>
+            Key color
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="color" id="keyColor" value="#000000" style="flex:0 0 56px;">
+              <input type="range" id="keyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+              <input type="text" name="chroma_key_color" placeholder="rgba" readonly>
+            </div>
+          </label>
+        </div>
+        <label>
+          Key tolerance (0-255)
+          <input type="number" name="chroma_key_tolerance" min="0" max="255" value="12">
+        </label>
+        <label>
+          Output pattern
+          <input type="text" name="output_pattern" placeholder="{stem}_sheet_{ts}">
+        </label>
+        <div class="switch"><input type="checkbox" name="generate_manifest" checked> Generate JSON manifest</div>
+        <div class="switch"><input type="checkbox" name="remove_black_background" checked> Make black transparent</div>
+        <div class="switch"><input type="checkbox" name="auto_edge_cutout" checked> Edge-aware cutout</div>
+          <button type="submit">Generate spritesheet</button>
+          <div class="status" id="status"></div>
+        </form>
+      </section>
+
+      <section class="panel">
+      <h2>2) Preview &amp; download</h2>
+      <div class="preview checker" id="preview">
+        <span id="previewPlaceholder">Your spritesheet will appear here.</span>
+        <img id="previewImage" alt="Spritesheet preview" style="display:none;">
+      </div>
+      <div class="links" id="resultLinks"></div>
+      <div style="margin-top:12px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+          <button id="playButton" type="button">Play animation</button>
+          <button id="maskToggle" type="button">Show alpha mask</button>
+          <button id="checkerToggle" type="button">Hide checkerboard</button>
+          <label style="color:var(--muted); font-size:12px;">FPS <input type="range" id="fpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+          <label style="color:var(--muted); font-size:12px;">Preview BG
+            <input type="color" id="canvasBgColor" value="#0a1020" style="margin-left:6px;">
+          </label>
+          <label style="color:var(--muted); font-size:12px;">Alpha
+            <input type="range" id="canvasBgAlpha" min="0" max="255" value="255" style="width:140px;">
+          </label>
+        </div>
+        <canvas id="animCanvas" width="320" height="240" class="checker" style="width:100%; max-width:360px; background:#0a1020; border:1px solid var(--border); border-radius:8px;"></canvas>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Artifacts</h2>
+      <ul class="artifact-list" id="artifactList"></ul>
+    </section>
+  </main>
+
+  <main id="tabImageLab" style="display:none;">
+    <section class="panel">
+      <h2>Image Lab (beta)</h2>
+      <form id="imageForm">
+        <label>
+          Image or spritesheet
+          <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp" required>
+        </label>
+
+        <div class="panel" style="padding:12px; background:#0b1324; border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;">Basic Geometry</h3>
+          <div class="inline">
+            <label>Resize width <input type="number" name="img_resize_width" min="1" placeholder="auto"></label>
+            <label>Resize height <input type="number" name="img_resize_height" min="1" placeholder="auto"></label>
+          </div>
+          <div class="inline">
+            <label>Rotate (deg) <input type="number" name="img_rotate" step="1" value="0"></label>
+            <label>Blur radius <input type="number" name="img_blur" step="0.5" min="0" value="0"></label>
+          </div>
+          <div class="inline">
+            <label>Crop X <input type="number" name="img_crop_x" min="0" placeholder="0"></label>
+            <label>Crop Y <input type="number" name="img_crop_y" min="0" placeholder="0"></label>
+            <label>Crop W <input type="number" name="img_crop_w" min="1" placeholder="width"></label>
+            <label>Crop H <input type="number" name="img_crop_h" min="1" placeholder="height"></label>
+          </div>
+          <div class="inline">
+            <label><input type="checkbox" name="img_flip_h"> Flip horizontal</label>
+            <label><input type="checkbox" name="img_flip_v"> Flip vertical</label>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;">Color & FX</h3>
+          <div class="inline">
+            <label><input type="checkbox" name="img_grayscale"> Grayscale</label>
+            <label><input type="checkbox" name="img_invert"> Invert colors</label>
+          </div>
+          <div class="inline">
+            <label>Brightness (1.0 = keep) <input type="number" name="img_brightness" step="0.1" min="0.1" placeholder="1.0"></label>
+            <label>Contrast (1.0 = keep) <input type="number" name="img_contrast" step="0.1" min="0.1" placeholder="1.0"></label>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;">Chroma & Alpha</h3>
+          <div class="inline">
+            <label>Key tolerance <input type="number" name="img_key_tolerance" min="0" max="255" value="12"></label>
+            <label><input type="checkbox" name="img_auto_edge" checked> Edge-aware cutout</label>
+          </div>
+          <div class="inline">
+            <label>
+              Key color
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="color" id="imgKeyColor" value="#00ff00" style="flex:0 0 56px;">
+                <input type="range" id="imgKeyAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+                <input type="text" name="img_chroma_key" placeholder="rgba" readonly>
+              </div>
+            </label>
+            <label><input type="checkbox" name="img_to_mask"> Output alpha mask</label>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:12px; margin-top:10px; background:#0b1324; border:1px solid var(--border);">
+          <h3 style="margin:0 0 8px;">Background</h3>
+          <div class="inline">
+            <label>
+              <input type="checkbox" name="img_flatten_bg"> Flatten background
+            </label>
+            <label>
+              Color / Alpha
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="color" id="imgBgColor" value="#0a1020" style="flex:0 0 56px;">
+                <input type="range" id="imgBgAlpha" min="0" max="255" value="255" title="Alpha" style="flex:1;">
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" style="margin-top:12px;">Process image</button>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:240px;">
+        <span id="imgPreviewPlaceholder">Processed image will appear here.</span>
+        <img id="imgPreview" alt="Processed" style="display:none; max-height:420px;">
+        <canvas id="imgAnimCanvas" width="320" height="240" class="checker" style="width:100%; max-width:360px; background:#0a1020; border:1px solid var(--border); border-radius:8px; display:none;"></canvas>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px;">
+          <button id="imgPlayButton" type="button">Play spritesheet</button>
+          <label style="color:var(--muted); font-size:12px;">FPS <input type="range" id="imgFpsSlider" min="4" max="48" value="12" style="width:160px;"></label>
+          <label style="color:var(--muted); font-size:12px;">Frame width <input type="number" id="imgFrameWidth" min="1" value="64" style="width:80px;"></label>
+          <label style="color:var(--muted); font-size:12px;">Frame height <input type="number" id="imgFrameHeight" min="1" value="64" style="width:80px;"></label>
+          <label style="color:var(--muted); font-size:12px;">Columns <input type="number" id="imgColumns" min="1" value="4" style="width:70px;"></label>
+        </div>
+      </div>
+      <div class="links" id="imgLinks"></div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const statusEl = document.getElementById("status");
+    const previewImg = document.getElementById("previewImage");
+    const previewPlaceholder = document.getElementById("previewPlaceholder");
+    const resultLinks = document.getElementById("resultLinks");
+    const artifactList = document.getElementById("artifactList");
+    const metaHint = document.getElementById("metaHint");
+    const animCanvas = document.getElementById("animCanvas");
+    const playButton = document.getElementById("playButton");
+    const fpsSlider = document.getElementById("fpsSlider");
+    const bgColor = document.getElementById("bgColor");
+    const bgAlpha = document.getElementById("bgAlpha");
+    const keyColor = document.getElementById("keyColor");
+    const keyAlpha = document.getElementById("keyAlpha");
+    const maskToggle = document.getElementById("maskToggle");
+    const checkerToggle = document.getElementById("checkerToggle");
+    const canvasBgColor = document.getElementById("canvasBgColor");
+    const canvasBgAlpha = document.getElementById("canvasBgAlpha");
+    const imageForm = document.getElementById("imageForm");
+    const imgKeyColor = document.getElementById("imgKeyColor");
+    const imgKeyAlpha = document.getElementById("imgKeyAlpha");
+    const imgPreview = document.getElementById("imgPreview");
+    const imgPreviewPlaceholder = document.getElementById("imgPreviewPlaceholder");
+    const imgLinks = document.getElementById("imgLinks");
+    const tabSpritesBtn = document.getElementById("tabSpritesBtn");
+    const tabImagesBtn = document.getElementById("tabImagesBtn");
+    const tabSprites = document.getElementById("tabSprites");
+    const tabImageLab = document.getElementById("tabImageLab");
+    const imgBgColor = document.getElementById("imgBgColor");
+    const imgBgAlpha = document.getElementById("imgBgAlpha");
+    const imgAnimCanvas = document.getElementById("imgAnimCanvas");
+    const imgPlayButton = document.getElementById("imgPlayButton");
+    const imgFpsSlider = document.getElementById("imgFpsSlider");
+    const imgFrameWidth = document.getElementById("imgFrameWidth");
+    const imgFrameHeight = document.getElementById("imgFrameHeight");
+    const imgColumns = document.getElementById("imgColumns");
+
+    const numOrNull = (val) => {
+      if (val === null || val === undefined) return null;
+      const trimmed = String(val).trim();
+      if (trimmed === "") return null;
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    let spriteSheetImage = null;
+    let maskDataUrl = null;
+    let animTimer = null;
+    let lastResult = null;
+    let showMask = false;
+    let showChecker = true;
+    let currentSheetUrl = null;
+    let canvasBg = { r: 10, g: 16, b: 32, a: 255 };
+    let imgSheetImage = null;
+    let imgAnimTimer = null;
+    const imgColorToRgba = () => {
+      const hex = imgKeyColor.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(imgKeyAlpha.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+
+    const imgBgToRgba = () => {
+      const hex = imgBgColor.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(imgBgAlpha.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+
+    const rgbaFromPickers = (colorInput, alphaInput) => {
+      const hex = colorInput.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(alphaInput.value, 10);
+      return `${r},${g},${b},${a}`;
+    };
+
+    const syncColorFields = () => {
+      form.background_color.value = rgbaFromPickers(bgColor, bgAlpha);
+      form.chroma_key_color.value = rgbaFromPickers(keyColor, keyAlpha);
+    };
+    [bgColor, bgAlpha, keyColor, keyAlpha].forEach((el) => el.addEventListener("input", syncColorFields));
+    syncColorFields();
+
+    const setKeyColor = (r, g, b, a) => {
+      keyColor.value = `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+      keyAlpha.value = a;
+      syncColorFields();
+      setStatus(`Key color set to rgba(${r},${g},${b},${a})`, false, true);
+    };
+
+    const sampleColorFromPreview = (event) => {
+      if (!spriteSheetImage) return;
+      const rect = previewImg.getBoundingClientRect();
+      const xRatio = spriteSheetImage.naturalWidth / previewImg.clientWidth;
+      const yRatio = spriteSheetImage.naturalHeight / previewImg.clientHeight;
+      const x = Math.floor((event.clientX - rect.left) * xRatio);
+      const y = Math.floor((event.clientY - rect.top) * yRatio);
+      if (x < 0 || y < 0 || x >= spriteSheetImage.naturalWidth || y >= spriteSheetImage.naturalHeight) return;
+      const off = document.createElement("canvas");
+      off.width = spriteSheetImage.naturalWidth;
+      off.height = spriteSheetImage.naturalHeight;
+      const ctx = off.getContext("2d");
+      ctx.drawImage(spriteSheetImage, 0, 0);
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      setKeyColor(pixel[0], pixel[1], pixel[2], pixel[3]);
+    };
+
+    previewImg.addEventListener("click", sampleColorFromPreview);
+
+    form.video.addEventListener("change", () => {
+      const file = form.video.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const videoEl = document.createElement("video");
+      videoEl.preload = "metadata";
+      videoEl.onloadedmetadata = () => {
+        const { videoWidth, videoHeight, duration } = videoEl;
+        form.output_width.value = videoWidth || "";
+        form.output_height.value = videoHeight || "";
+        form.output_pattern.value = "{stem}_sheet_{ts}";
+        metaHint.textContent = `Detected ${videoWidth}x${videoHeight} @ ${duration.toFixed(2)}s`;
+        form.start_time.value = "0";
+        form.end_time.value = duration.toFixed(2);
+        URL.revokeObjectURL(url);
+      };
+      videoEl.src = url;
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const fileInput = form.video;
+      if (!fileInput.files.length) {
+        setStatus("Pick a video first.", true);
+        return;
+      }
+      setStatus("Uploading and generating...", false);
+      const formData = new FormData();
+      formData.append("video", fileInput.files[0]);
+
+      const settings = {
+        output_width: numOrNull(form.output_width.value),
+        output_height: numOrNull(form.output_height.value),
+        frame_count: numOrNull(form.frame_count.value),
+        frame_interval: numOrNull(form.frame_interval.value),
+        start_time: numOrNull(form.start_time.value),
+        end_time: numOrNull(form.end_time.value),
+        columns: numOrNull(form.columns.value),
+        rows: numOrNull(form.rows.value),
+        max_frames: numOrNull(form.max_frames.value),
+        padding: numOrNull(form.padding.value) ?? 0,
+        generate_manifest: form.generate_manifest.checked,
+        background_color: form.background_color.value.trim(),
+        remove_black_background: form.remove_black_background.checked,
+        chroma_key_color: form.chroma_key_color.value.trim(),
+        chroma_key_tolerance: numOrNull(form.chroma_key_tolerance.value) ?? 12,
+        auto_edge_cutout: form.auto_edge_cutout.checked,
+        output_pattern: form.output_pattern.value.trim(),
+      };
+      formData.append("settings", JSON.stringify(settings));
+
+      try {
+        const res = await fetch("/api/generate", { method: "POST", body: formData });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || `Request failed (${res.status})`);
+        }
+        const data = await res.json();
+        lastResult = data;
+        setStatus("Spritesheet ready.", false, true);
+        showResult(data);
+        await refreshArtifacts();
+      } catch (err) {
+        setStatus(err.message || "Generation failed.", true);
+      }
+    });
+
+    const setStatus = (message, isError = false, success = false) => {
+      statusEl.textContent = message;
+      statusEl.className = "status";
+      if (isError) statusEl.classList.add("error");
+      if (success) statusEl.classList.add("success");
+    };
+
+    const showResult = (data) => {
+      if (data.spritesheet_url) {
+        const url = `${data.spritesheet_url}?t=${Date.now()}`;
+        previewImg.src = url;
+        previewImg.style.display = "block";
+        previewPlaceholder.style.display = "none";
+        loadSheetForAnimation(url, data);
+      }
+      resultLinks.innerHTML = "";
+      if (data.spritesheet_url) {
+        resultLinks.appendChild(buildLink("Download spritesheet", data.spritesheet_url));
+      }
+      if (data.manifest_url) {
+        resultLinks.appendChild(buildLink("Manifest JSON", data.manifest_url));
+      }
+      const meta = document.createElement("div");
+      meta.style.color = "#9fb3c8";
+      meta.style.fontSize = "12px";
+      meta.textContent = `Frames: ${data.frame_count} | Grid: ${data.columns}x${data.rows} | Frame: ${data.frame_width}x${data.frame_height} | Output: ${data.width}x${data.height}`;
+      resultLinks.appendChild(meta);
+    };
+
+    const buildLink = (label, href) => {
+      const anchor = document.createElement("a");
+      anchor.href = href;
+      anchor.textContent = label;
+      anchor.className = "link";
+      anchor.target = "_blank";
+      return anchor;
+    };
+
+    const refreshArtifacts = async () => {
+      try {
+        const res = await fetch("/api/artifacts");
+        const data = await res.json();
+        const items = (data.images || []).sort().reverse();
+        artifactList.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = "No artifacts yet.";
+          artifactList.appendChild(li);
+          return;
+        }
+        items.forEach((href) => {
+          const li = document.createElement("li");
+          const name = href.split("/").pop();
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Delete";
+          deleteBtn.style.padding = "6px 10px";
+          deleteBtn.style.fontSize = "12px";
+          deleteBtn.style.boxShadow = "none";
+          deleteBtn.style.background = "#ef4444";
+          deleteBtn.style.color = "#fff";
+          deleteBtn.style.borderRadius = "6px";
+          deleteBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            try {
+              const resp = await fetch(`/api/artifacts/${encodeURIComponent(name)}`, { method: "DELETE" });
+              if (!resp.ok) {
+                const detail = await resp.json().catch(() => ({}));
+                throw new Error(detail.detail || "Delete failed");
+              }
+              await refreshArtifacts();
+              setStatus(`Deleted ${name}`, false, true);
+            } catch (err) {
+              setStatus(err.message || "Delete failed", true);
+            }
+          });
+          li.innerHTML = `<span>${name}</span>`;
+          li.addEventListener("click", () => {
+            const url = `${href}?t=${Date.now()}`;
+            previewImg.src = url;
+            previewImg.style.display = "block";
+            previewPlaceholder.style.display = "none";
+            lastResult = null;
+            spriteSheetImage = null;
+            maskDataUrl = null;
+            stopAnimation();
+            loadSheetForAnimation(url, { frame_width: animCanvas.width, frame_height: animCanvas.height });
+          });
+          const pill = document.createElement("span");
+          pill.className = "pill";
+          pill.textContent = "sheet";
+          const right = document.createElement("div");
+          right.style.display = "flex";
+          right.style.gap = "8px";
+          right.style.alignItems = "center";
+          right.appendChild(pill);
+          right.appendChild(deleteBtn);
+          li.appendChild(right);
+          artifactList.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    refreshArtifacts();
+
+    // Animation + transparency helpers
+    const loadSheetForAnimation = (url, data) => {
+      currentSheetUrl = url;
+      spriteSheetImage = new Image();
+      spriteSheetImage.crossOrigin = "anonymous";
+      spriteSheetImage.onload = () => {
+        if (data.frame_width && data.frame_height) {
+          animCanvas.width = data.frame_width;
+          animCanvas.height = data.frame_height;
+        }
+        maskDataUrl = createMask(spriteSheetImage);
+        updatePreviewImage();
+        startAnimation();
+      };
+      spriteSheetImage.src = url;
+    };
+
+    const createMask = (img) => {
+      const off = document.createElement("canvas");
+      off.width = img.naturalWidth;
+      off.height = img.naturalHeight;
+      const ctx = off.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, off.width, off.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3];
+        data[i] = 255;
+        data[i + 1] = 0;
+        data[i + 2] = 0;
+        data[i + 3] = alpha;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      return off.toDataURL("image/png");
+    };
+
+    const updatePreviewImage = () => {
+      const target = showMask && maskDataUrl ? maskDataUrl : currentSheetUrl;
+      if (!target) return;
+      previewImg.src = target;
+      previewImg.style.display = "block";
+      previewPlaceholder.style.display = "none";
+    };
+
+    const startAnimation = () => {
+      stopAnimation();
+      if (!spriteSheetImage || !lastResult) return;
+      let frame = 0;
+      const ctx = animCanvas.getContext("2d");
+      const total = lastResult.frame_count;
+      const cols = lastResult.columns;
+      const fw = lastResult.frame_width;
+      const fh = lastResult.frame_height;
+      const fps = Number(fpsSlider.value) || 12;
+      const interval = 1000 / fps;
+      animTimer = setInterval(() => {
+        ctx.fillStyle = `rgba(${canvasBg.r},${canvasBg.g},${canvasBg.b},${canvasBg.a / 255})`;
+        ctx.fillRect(0, 0, fw, fh);
+        const col = frame % cols;
+        const row = Math.floor(frame / cols);
+        ctx.drawImage(
+          spriteSheetImage,
+          col * fw,
+          row * fh,
+          fw,
+          fh,
+          0,
+          0,
+          fw,
+          fh
+        );
+        frame = (frame + 1) % total;
+      }, interval);
+      playButton.textContent = "Pause animation";
+    };
+
+    const stopAnimation = () => {
+      if (animTimer) {
+        clearInterval(animTimer);
+        animTimer = null;
+        playButton.textContent = "Play animation";
+      }
+    };
+
+    playButton.addEventListener("click", () => {
+      if (animTimer) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    });
+
+    fpsSlider.addEventListener("input", () => {
+      if (animTimer) startAnimation();
+    });
+
+    maskToggle.addEventListener("click", () => {
+      showMask = !showMask;
+      maskToggle.textContent = showMask ? "Show color preview" : "Show alpha mask";
+      if (spriteSheetImage) {
+        const current = previewImg.src;
+        updatePreviewImage(current);
+      }
+    });
+
+    checkerToggle.addEventListener("click", () => {
+      showChecker = !showChecker;
+      [document.getElementById("preview"), animCanvas].forEach((el) => {
+        if (showChecker) {
+          el.classList.add("checker");
+        } else {
+          el.classList.remove("checker");
+        }
+      });
+      checkerToggle.textContent = showChecker ? "Hide checkerboard" : "Show checkerboard";
+    });
+
+    const setCanvasBg = () => {
+      const hex = canvasBgColor.value.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = parseInt(canvasBgAlpha.value, 10);
+      canvasBg = { r, g, b, a };
+    };
+    canvasBgColor.addEventListener("input", setCanvasBg);
+    canvasBgAlpha.addEventListener("input", setCanvasBg);
+    setCanvasBg();
+
+    // Tabs
+    const activateTab = (tab) => {
+      const spriteActive = tab === "sprites";
+      tabSprites.style.display = spriteActive ? "block" : "none";
+      document.querySelector('main:not(#tabImageLab)').style.display = spriteActive ? "grid" : "none";
+      tabImageLab.style.display = spriteActive ? "none" : "grid";
+      tabSpritesBtn.setAttribute("aria-pressed", spriteActive);
+      tabImagesBtn.setAttribute("aria-pressed", !spriteActive);
+    };
+    tabSpritesBtn.addEventListener("click", () => activateTab("sprites"));
+    tabImagesBtn.addEventListener("click", () => activateTab("images"));
+    activateTab("sprites");
+
+    // Image lab
+    const syncImgColorField = () => {
+      imageForm.img_chroma_key.value = imgColorToRgba();
+    };
+    [imgKeyColor, imgKeyAlpha].forEach((el) => el.addEventListener("input", syncImgColorField));
+    syncImgColorField();
+
+    imageForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = imageForm.image.files[0];
+      if (!file) {
+        setStatus("Pick an image first.", true);
+        return;
+      }
+      const formData = new FormData();
+      formData.append("image", file);
+      const settings = {
+        chroma_key_color: imgColorToRgba(),
+        chroma_key_tolerance: numOrNull(imageForm.img_key_tolerance.value) ?? 12,
+        auto_edge_cutout: imageForm.img_auto_edge.checked,
+        to_mask: imageForm.img_to_mask.checked,
+        resize_width: numOrNull(imageForm.img_resize_width.value),
+        resize_height: numOrNull(imageForm.img_resize_height.value),
+        rotate_degrees: numOrNull(imageForm.img_rotate.value),
+        blur_radius: numOrNull(imageForm.img_blur.value),
+        flip_horizontal: imageForm.img_flip_h.checked,
+        flip_vertical: imageForm.img_flip_v.checked,
+        grayscale: imageForm.img_grayscale.checked,
+        invert_colors: imageForm.img_invert.checked,
+        brightness: numOrNull(imageForm.img_brightness.value),
+        contrast: numOrNull(imageForm.img_contrast.value),
+        crop_x: numOrNull(imageForm.img_crop_x.value),
+        crop_y: numOrNull(imageForm.img_crop_y.value),
+        crop_width: numOrNull(imageForm.img_crop_w.value),
+        crop_height: numOrNull(imageForm.img_crop_h.value),
+        flatten_background: imageForm.img_flatten_bg.checked ? imgBgToRgba() : null,
+      };
+      formData.append("settings", JSON.stringify(settings));
+      setStatus("Processing image...", false);
+      try {
+        const res = await fetch("/api/process-image", { method: "POST", body: formData });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || `Request failed (${res.status})`);
+        }
+        const data = await res.json();
+        imgPreview.src = `${data.image_url}?t=${Date.now()}`;
+        imgPreview.style.display = "block";
+        imgPreviewPlaceholder.style.display = "none";
+        imgLinks.innerHTML = "";
+        imgLinks.appendChild(buildLink("Download processed image", data.image_url));
+        loadImageSheetForAnimation(`${data.image_url}?t=${Date.now()}`);
+        setStatus("Image processed.", false, true);
+      } catch (err) {
+        setStatus(err.message || "Image processing failed.", true);
+      }
+    });
+
+    const loadImageSheetForAnimation = (url) => {
+      imgSheetImage = new Image();
+      imgSheetImage.crossOrigin = "anonymous";
+      imgSheetImage.onload = () => {
+        imgAnimCanvas.style.display = "block";
+        imgAnimCanvas.width = parseInt(imgFrameWidth.value, 10) || imgSheetImage.naturalWidth;
+        imgAnimCanvas.height = parseInt(imgFrameHeight.value, 10) || imgSheetImage.naturalHeight;
+        startImgAnimation();
+      };
+      imgSheetImage.src = url;
+    };
+
+    const startImgAnimation = () => {
+      stopImgAnimation();
+      if (!imgSheetImage) return;
+      let frame = 0;
+      const ctx = imgAnimCanvas.getContext("2d");
+      const fw = parseInt(imgFrameWidth.value, 10) || imgSheetImage.naturalWidth;
+      const fh = parseInt(imgFrameHeight.value, 10) || imgSheetImage.naturalHeight;
+      const cols = parseInt(imgColumns.value, 10) || 1;
+      const totalCols = Math.max(1, Math.floor(imgSheetImage.naturalWidth / fw));
+      const effectiveCols = Math.min(cols, totalCols);
+      const totalFrames = effectiveCols * Math.max(1, Math.floor(imgSheetImage.naturalHeight / fh));
+      const fps = Number(imgFpsSlider.value) || 12;
+      const interval = 1000 / fps;
+      imgAnimTimer = setInterval(() => {
+        const col = frame % effectiveCols;
+        const row = Math.floor(frame / effectiveCols);
+        ctx.clearRect(0, 0, fw, fh);
+        ctx.drawImage(
+          imgSheetImage,
+          col * fw,
+          row * fh,
+          fw,
+          fh,
+          0,
+          0,
+          fw,
+          fh
+        );
+        frame = (frame + 1) % totalFrames;
+      }, interval);
+      imgPlayButton.textContent = "Pause spritesheet";
+    };
+
+    const stopImgAnimation = () => {
+      if (imgAnimTimer) {
+        clearInterval(imgAnimTimer);
+        imgAnimTimer = null;
+        imgPlayButton.textContent = "Play spritesheet";
+      }
+    };
+
+    imgPlayButton.addEventListener("click", () => {
+      if (imgAnimTimer) stopImgAnimation();
+      else startImgAnimation();
+    });
+
+    [imgFpsSlider, imgFrameWidth, imgFrameHeight, imgColumns].forEach((el) =>
+      el.addEventListener("input", () => {
+        if (imgAnimTimer) startImgAnimation();
+      })
+    );
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+pillow>=10.3.0
+moviepy>=1.0.3
+numpy>=1.26.0
+pyside6>=6.7.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart>=0.0.9

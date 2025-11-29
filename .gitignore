@@ -1,0 +1,25 @@
+# Byte-compiled / cache
+__pycache__/
+*.pyc
+
+# Environments and tools
+.venv/
+.idea/
+.vscode/
+*.egg-info/
+
+# Build/test artifacts
+artifacts/
+coverage*/
+htmlcov/
+.pytest_cache/
+
+# Assets and large media
+assets/*.mp4
+assets/*.mov
+assets/*.avi
+assets/*.gif
+
+# Local configs
+.env
+.DS_Store
