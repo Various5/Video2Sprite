@@ -106,10 +106,9 @@
       color: var(--accent);
     }
     .content {
-      width: calc(100% - 16px);
+      width: min(1200px, 100%);
       margin: 0 auto;
       padding: 0 0 28px;
-      max-width: 100%;
     }
     body::before {
       content: "";
@@ -126,11 +125,10 @@
     header, main, #tabImageLab { position: relative; z-index: 1; }
     header {
       padding: 28px 0 10px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 16px;
-      align-items: center;
-      flex-wrap: wrap;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-start;
     }
     .title {
       display: flex;
@@ -181,9 +179,9 @@
     }
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 10px;
-      min-width: 280px;
+      width: 100%;
     }
     .stat {
       background: var(--panel);
@@ -205,10 +203,10 @@
     }
     main {
       padding: 0 0 28px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 16px;
-      align-items: start;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: stretch;
     }
     #tabImageLab {
       padding: 0 0 32px;
