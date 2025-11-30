@@ -14,6 +14,7 @@ from ..core.errors import ProcessingError
 from .video_loader import _ensure_ffmpeg_available, _resolve_video_file_clip
 
 logger = logging.getLogger(__name__)
+MAX_FRAME_CAP = 400
 
 
 def _compute_sample_times(
@@ -26,7 +27,8 @@ def _compute_sample_times(
 ) -> list[float]:
     """Decide which timestamps to sample based on user input."""
 
-    cap = 180 if max_frames is None else max_frames
+    user_cap = max_frames if max_frames is not None else MAX_FRAME_CAP
+    cap = min(user_cap, MAX_FRAME_CAP)
     duration = metadata.duration_seconds
     start = max(0.0, start_time or 0.0)
     stop = min(end_time if end_time is not None else duration, duration)

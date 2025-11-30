@@ -217,7 +217,7 @@ class SettingsPanel(QWidget):
             max_frames=max_frames,
             background_color=self._background_color,
             remove_black_background=self.remove_black_checkbox.isChecked(),
-            chroma_key_color=self._background_color if self._background_color else self._chroma_color,
+            chroma_key_color=self._chroma_color,
             chroma_key_tolerance=self.chroma_tolerance.value(),
             auto_edge_cutout=self.auto_edge_checkbox.isChecked(),
             padding=self.padding_input.value(),

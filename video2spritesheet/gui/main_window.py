@@ -45,6 +45,9 @@ from ..utils import file_tools
 from ..utils.validators import ALLOWED_VIDEO_EXTENSIONS
 
 logger = logging.getLogger(__name__)
+BASE_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_ASSETS = BASE_DIR / "assets"
+DEFAULT_OUTPUT = BASE_DIR / "artifacts"
 
 
 class WorkerSignals(QObject):
@@ -79,7 +82,9 @@ class GenerationWorker(QRunnable):
         try:
             meta = self.metadata or video_loader.load_metadata(self.settings.video_path)
             self.signals.status.emit("Extracting frames...")
+            self.signals.progress.emit(10)
             frames, infos = frame_extractor.extract_frames(self.settings, meta)
+            self.signals.progress.emit(40)
 
             if self._cancelled:
                 self.signals.cancelled.emit()
@@ -105,6 +110,7 @@ class GenerationWorker(QRunnable):
             spritesheet_path, sheet_image, packed_infos = spritesheet_builder.build_spritesheet(
                 frames_for_pack, infos, self.settings
             )
+            self.signals.progress.emit(75)
 
             thumbnails = _build_thumbnails(frames_for_pack)
 
@@ -113,8 +119,10 @@ class GenerationWorker(QRunnable):
                 self.signals.status.emit("Writing manifest...")
                 columns, rows = spritesheet_builder._resolve_grid(len(frames), self.settings.columns, self.settings.rows)
                 manifest_path = manifest_writer.write_manifest(packed_infos, self.settings, columns, rows)
+            self.signals.progress.emit(90)
 
             outcome = ProcessingOutcome(spritesheet_path=spritesheet_path, manifest_path=manifest_path)
+            self.signals.progress.emit(100)
             self.signals.finished.emit(outcome, sheet_image, packed_infos, thumbnails)
         except Exception as exc:
             logger.exception("Generation failed")
@@ -208,6 +216,12 @@ class MainWindow(QMainWindow):
         self.preview_label.setMouseTracking(True)
         self._last_image = None
         self._batch_queue: list[Path] = []
+
+        # Sensible defaults for workspace/output
+        default_workspace = DEFAULT_ASSETS if DEFAULT_ASSETS.exists() else BASE_DIR
+        default_output = DEFAULT_OUTPUT if DEFAULT_OUTPUT.exists() else BASE_DIR / "artifacts"
+        self.working_dir_input.setText(str(default_workspace))
+        self.output_dir_input.setText(str(default_output))
 
         self._build_menu()
         self._build_layout()
@@ -478,6 +492,7 @@ class MainWindow(QMainWindow):
 
         worker = GenerationWorker(settings=settings, metadata=self.metadata, selected_indices=self._selected_indices())
         worker.signals.status.connect(self.status_bar.showMessage)
+        worker.signals.progress.connect(self.progress_bar.setValue)
         worker.signals.error.connect(self._on_worker_error)
         worker.signals.finished.connect(self._on_preview_finished)
         worker.signals.cancelled.connect(self._on_worker_cancelled)
@@ -537,9 +552,10 @@ class MainWindow(QMainWindow):
         worker = GenerationWorker(
             settings=settings,
             metadata=metadata,
-            selected_indices=self._selected_indices(),
+            selected_indices=[],
         )
         worker.signals.status.connect(self.status_bar.showMessage)
+        worker.signals.progress.connect(self.progress_bar.setValue)
         worker.signals.error.connect(self._on_worker_error)
         worker.signals.finished.connect(self._on_worker_finished)
         worker.signals.cancelled.connect(self._on_worker_cancelled)
@@ -591,14 +607,10 @@ class MainWindow(QMainWindow):
 
     def _start_progress(self) -> None:
         self.progress_bar.setValue(0)
-        self.progress_timer.start()
 
     def _tick_progress(self) -> None:
-        current = self.progress_bar.value()
-        next_value = current + 5
-        if next_value >= 95:
-            next_value = 95
-        self.progress_bar.setValue(next_value)
+        # Timer no longer used; kept for compatibility
+        pass
 
     @Slot()
     def _on_browse_working_dir(self) -> None:
@@ -879,7 +891,6 @@ class MainWindow(QMainWindow):
     def _on_worker_finished(
         self, outcome: ProcessingOutcome, image, infos, thumbnails, preview_only: bool = False
     ) -> None:
-        self.progress_timer.stop()
         self.progress_bar.setValue(100)
         self.generate_button.setEnabled(True)
         self.preview_button.setEnabled(True)
