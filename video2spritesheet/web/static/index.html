@@ -2235,7 +2235,7 @@
     setCanvasBg();
 
     // Navigation
-    const setView = (view) => {
+    function setView(view) {
       const views = {
         sprites: tabSprites,
         images: tabImageLab,
@@ -2260,7 +2260,7 @@
         if (!el) return;
         el.style.display = key === view ? "grid" : "none";
       });
-      navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target === view));
+      navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target ==== view));
     };
     window.setView = setView;
     navLinks.forEach((link) => link.addEventListener("click", () => setView(link.dataset.target)));
