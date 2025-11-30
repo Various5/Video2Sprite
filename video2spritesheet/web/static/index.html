@@ -2498,7 +2498,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(resizeForm.resize_image, resizeForm.resize_artifact_url.value, "resize_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'resize_input.png'));
+        file = await resolveImageFile(resizeForm.resize_image, resizeForm.resize_artifact_url.value, "resize_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "resize_input.png");
+        }
       } catch (err) {
         updateStatus(resizeStatus, err.message || "Could not load artifact", true);
         return;
@@ -2535,7 +2538,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(maskForm.mask_image, maskForm.mask_artifact_url.value, "mask_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'mask_input.png'));
+        file = await resolveImageFile(maskForm.mask_image, maskForm.mask_artifact_url.value, "mask_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "mask_input.png");
+        }
       } catch (err) {
         updateStatus(maskStatus, err.message || "Could not load artifact", true);
         return;
@@ -2569,7 +2575,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(colorForm.color_image, colorForm.color_artifact_url.value, "color_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'color_input.png'));
+        file = await resolveImageFile(colorForm.color_image, colorForm.color_artifact_url.value, "color_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "color_input.png");
+        }
       } catch (err) {
         updateStatus(colorStatus, err.message || "Could not load artifact", true);
         return;
@@ -2665,7 +2674,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(cropForm.crop_image, cropForm.crop_artifact_url.value, "crop_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'crop_input.png'));
+        file = await resolveImageFile(cropForm.crop_image, cropForm.crop_artifact_url.value, "crop_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "crop_input.png");
+        }
       } catch (err) {
         updateStatus(cropStatus, err.message || "Could not load artifact", true);
         return;
@@ -2701,7 +2713,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(bgForm.bg_image, bgForm.bg_artifact_url.value, "bg_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'bg_input.png'));
+        file = await resolveImageFile(bgForm.bg_image, bgForm.bg_artifact_url.value, "bg_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "bg_input.png");
+        }
       } catch (err) {
         updateStatus(bgStatus, err.message || "Could not load artifact", true);
         return;
@@ -2736,7 +2751,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(fitForm.fit_image, fitForm.fit_artifact_url.value, "fit_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'fit_input.png'));
+        file = await resolveImageFile(fitForm.fit_image, fitForm.fit_artifact_url.value, "fit_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "fit_input.png");
+        }
       } catch (err) {
         updateStatus(fitStatus, err.message || "Could not load artifact", true);
         return;
@@ -2772,7 +2790,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(monoForm.mono_image, monoForm.mono_artifact_url.value, "mono_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'mono_input.png'));
+        file = await resolveImageFile(monoForm.mono_image, monoForm.mono_artifact_url.value, "mono_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "mono_input.png");
+        }
       } catch (err) {
         updateStatus(monoStatus, err.message || "Could not load artifact", true);
         return;
@@ -2806,7 +2827,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(blurForm.blur_image, blurForm.blur_artifact_url.value, "blur_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'blur_input.png'));
+        file = await resolveImageFile(blurForm.blur_image, blurForm.blur_artifact_url.value, "blur_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "blur_input.png");
+        }
       } catch (err) {
         updateStatus(blurStatus, err.message || "Could not load artifact", true);
         return;
@@ -2838,7 +2862,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(flipForm.flip_image, flipForm.flip_artifact_url.value, "flip_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'flip_input.png'));
+        file = await resolveImageFile(flipForm.flip_image, flipForm.flip_artifact_url.value, "flip_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "flip_input.png");
+        }
       } catch (err) {
         updateStatus(flipStatus, err.message || "Could not load artifact", true);
         return;
@@ -2871,7 +2898,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(toneForm.tone_image, toneForm.tone_artifact_url.value, "tone_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'tone_input.png'));
+        file = await resolveImageFile(toneForm.tone_image, toneForm.tone_artifact_url.value, "tone_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "tone_input.png");
+        }
       } catch (err) {
         updateStatus(toneStatus, err.message || "Could not load artifact", true);
         return;
@@ -2905,7 +2935,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(padForm.pad_image, padForm.pad_artifact_url.value, "pad_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'pad_input.png'));
+        file = await resolveImageFile(padForm.pad_image, padForm.pad_artifact_url.value, "pad_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "pad_input.png");
+        }
       } catch (err) {
         updateStatus(padStatus, err.message || "Could not load artifact", true);
         return;
@@ -2938,7 +2971,10 @@
       event.preventDefault();
       let file;
       try {
-        file = await resolveImageFile(rotForm.rot_image, rotForm.rot_artifact_url.value, "rot_input.png") or (getSelectedMediaPath('image') and await fetchArtifactFile(getSelectedMediaPath('image'), 'rot_input.png'));
+        file = await resolveImageFile(rotForm.rot_image, rotForm.rot_artifact_url.value, "rot_input.png");
+        if (!file && getSelectedMediaPath("image")) {
+          file = await fetchArtifactFile(getSelectedMediaPath("image"), "rot_input.png");
+        }
       } catch (err) {
         updateStatus(rotStatus, err.message || "Could not load artifact", true);
         return;
