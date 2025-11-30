@@ -34,22 +34,17 @@
     }
     .app {
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: 230px 1fr;
       min-height: 100vh;
     }
     .sidebar {
-      width: 230px;
       background: rgba(19, 24, 32, 0.9);
       border-right: 1px solid var(--stroke);
       padding: 18px 14px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
       box-shadow: 6px 0 30px rgba(0, 0, 0, 0.25);
-      transition: width 0.2s ease, transform 0.2s ease;
-    }
-    .sidebar.collapsed {
-      width: 68px;
     }
     .brand {
       display: flex;
@@ -59,9 +54,6 @@
       letter-spacing: -0.2px;
     }
     .brand-name { white-space: nowrap; }
-    .sidebar.collapsed .brand-name { display: none; }
-    .sidebar.collapsed .nav-link { text-align: center; padding: 10px 8px; }
-    .sidebar.collapsed .nav-toggle { text-align: center; padding: 8px 6px; }
     .brand-dot {
       width: 10px;
       height: 10px;
@@ -69,10 +61,17 @@
       background: var(--accent);
       box-shadow: 0 0 0 6px rgba(155, 231, 180, 0.2);
     }
-    .nav-links {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    .nav-group {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .nav-group-label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 4px 0;
     }
     .nav-link {
       background: rgba(255, 255, 255, 0.03);
@@ -84,26 +83,13 @@
       cursor: pointer;
       font-weight: 600;
       transition: all 0.18s ease;
+      width: 100%;
     }
     .nav-link.active {
       background: linear-gradient(135deg, var(--accent-strong), var(--accent));
       color: #0b0f0d;
       border-color: transparent;
       box-shadow: var(--glow);
-    }
-    .nav-toggle {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--stroke);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 8px;
-      cursor: pointer;
-      width: 100%;
-      transition: border 0.18s ease, color 0.18s ease;
-    }
-    .nav-toggle:hover {
-      border-color: var(--accent);
-      color: var(--accent);
     }
     .content {
       width: min(1200px, 100%);
@@ -371,6 +357,20 @@
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
     }
+    .library-columns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+      align-items: start;
+      width: 100%;
+    }
+    .library-column {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 10px;
+      height: 100%;
+    }
     .media-card {
       border: 1px solid var(--stroke);
       border-radius: 12px;
@@ -468,6 +468,44 @@
       font-size: 15px;
       color: var(--text);
     }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99;
+      padding: 20px;
+    }
+    .modal.open { display: flex; }
+    .modal-content {
+      background: var(--panel-strong);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 18px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: var(--shadow), var(--glow);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .modal-close {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      box-shadow: none;
+      padding: 6px 10px;
+    }
+    .help-copy {
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .canvas-frame {
       width: 100%;
       max-width: 360px;
@@ -499,9 +537,13 @@
         <span class="brand-dot"></span>
         <span class="brand-name">Video2Sprite</span>
       </div>
-      <button class="nav-toggle" id="navToggle">Collapse menu</button>
-      <div class="nav-links">
+      <button class="ghost small" id="navToggle" type="button">Collapse menu</button>
+      <div class="nav-group">
+        <div class="nav-group-label">Sprites</div>
         <button class="nav-link active" data-target="sprites" onclick="setView('sprites')">Video2Sprite</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Image Tools</div>
         <button class="nav-link" data-target="imageStudio" onclick="setView('imageStudio')">Image Studio</button>
         <button class="nav-link" data-target="images" onclick="setView('images')">Image Lab</button>
         <button class="nav-link" data-target="quickResize" onclick="setView('quickResize')">Quick Resize</button>
@@ -509,6 +551,9 @@
         <button class="nav-link" data-target="colorTuner" onclick="setView('colorTuner')">Color Tuner</button>
         <button class="nav-link" data-target="cropper" onclick="setView('cropper')">Smart Crop</button>
         <button class="nav-link" data-target="bgRemover" onclick="setView('bgRemover')">Background Remover</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Transforms</div>
         <button class="nav-link" data-target="fitTool" onclick="setView('fitTool')">Square Fit</button>
         <button class="nav-link" data-target="monoTool" onclick="setView('monoTool')">Mono / Invert</button>
         <button class="nav-link" data-target="blurTool" onclick="setView('blurTool')">Blur / Rotate</button>
@@ -516,8 +561,14 @@
         <button class="nav-link" data-target="toneTool" onclick="setView('toneTool')">Tone Balance</button>
         <button class="nav-link" data-target="canvasPad" onclick="setView('canvasPad')">Canvas Pad</button>
         <button class="nav-link" data-target="rotateCrop" onclick="setView('rotateCrop')">Rotate & Crop</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Experimental</div>
         <button class="nav-link" data-target="seamlessTool" onclick="setView('seamlessTool')">Seamless Texture</button>
         <button class="nav-link" data-target="parallaxTool" onclick="setView('parallaxTool')">Video → Parallax</button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Library</div>
         <button class="nav-link" data-target="library" onclick="setView('library')">Media Library</button>
       </div>
     </aside>
@@ -760,16 +811,16 @@
       </div>
       <input type="file" id="libraryFileInput" style="display:none;" multiple accept=".png,.jpg,.jpeg,.webp,.mp4,.mov,.avi,.mkv,.webm">
       <div class="status" id="libraryStatus"></div>
-      <div class="media-grid" style="margin-top:12px;">
-        <div>
+      <div class="library-columns" style="margin-top:12px;">
+        <div class="library-column">
           <h3 style="margin:0 0 6px;">Videos</h3>
           <div class="media-grid" id="libraryVideoList"></div>
         </div>
-        <div>
+        <div class="library-column">
           <h3 style="margin:0 0 6px;">Images</h3>
           <div class="media-grid" id="libraryImageList"></div>
         </div>
-        <div>
+        <div class="library-column">
           <h3 style="margin:0 0 6px;">Artifacts</h3>
           <ul class="artifact-list" id="libraryArtifactsList"></ul>
         </div>
@@ -1311,6 +1362,16 @@
       <div class="links" id="parallaxLinks"></div>
     </section>
   </main>
+
+  <div class="modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <strong id="helpTitle">Help</strong>
+        <button type="button" class="modal-close" id="helpClose">Close</button>
+      </div>
+      <div class="help-copy" id="helpBody">Help text</div>
+    </div>
+  </div>
     </div>
   </div>
 
@@ -1463,6 +1524,9 @@
     const parallaxMid = document.getElementById("parallaxMid");
     const parallaxFg = document.getElementById("parallaxFg");
     const parallaxLinks = document.getElementById("parallaxLinks");
+    const helpModal = document.getElementById("helpModal");
+    const helpBody = document.getElementById("helpBody");
+    const helpClose = document.getElementById("helpClose");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -1890,8 +1954,6 @@
         libraryVideoList.innerHTML = "";
         libraryImageList.innerHTML = "";
         if (libraryArtifactsList) libraryArtifactsList.innerHTML = "";
-        const libraryArtifactsList = document.getElementById("libraryArtifactsList");
-        if (libraryArtifactsList) libraryArtifactsList.innerHTML = "";
 
         const addMediaRow = (targetList, href, typeLabel) => {
           const name = href.split("/").pop();
@@ -2264,6 +2326,23 @@
     canvasBgAlpha.addEventListener("input", setCanvasBg);
     setCanvasBg();
 
+    // Help modal
+    const openHelp = (copy) => {
+      helpBody.textContent = copy || "No help available.";
+      helpModal.classList.add("open");
+    };
+    const closeHelp = () => helpModal.classList.remove("open");
+    document.querySelectorAll("[data-help]").forEach((btn) => {
+      btn.addEventListener("click", () => openHelp(btn.dataset.help || ""));
+    });
+    helpClose.addEventListener("click", closeHelp);
+    helpModal.addEventListener("click", (e) => {
+      if (e.target === helpModal) closeHelp();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeHelp();
+    });
+
     // Navigation
     function setView(view) {
       const views = {
@@ -2288,7 +2367,7 @@
       };
       Object.entries(views).forEach(([key, el]) => {
         if (!el) return;
-        el.style.display = key === view ? "grid" : "none";
+        el.style.display = key === view ? "" : "none";
       });
       navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target === view));
     }
