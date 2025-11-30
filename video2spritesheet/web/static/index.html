@@ -519,6 +519,8 @@
         <button class="nav-link" data-target="toneTool" onclick="setView('toneTool')">Tone Balance</button>
         <button class="nav-link" data-target="canvasPad" onclick="setView('canvasPad')">Canvas Pad</button>
         <button class="nav-link" data-target="rotateCrop" onclick="setView('rotateCrop')">Rotate & Crop</button>
+        <button class="nav-link" data-target="seamlessTool" onclick="setView('seamlessTool')">Seamless Texture</button>
+        <button class="nav-link" data-target="parallaxTool" onclick="setView('parallaxTool')">Video → Parallax</button>
         <button class="nav-link" data-target="library" onclick="setView('library')">Media Library</button>
       </div>
     </aside>
@@ -1253,6 +1255,52 @@
       <div class="links" id="rotLinks"></div>
     </section>
   </main>
+
+  <main id="tabSeamlessTool" style="display:none;">
+    <section class="panel">
+      <h2>Seamless Texture Designer</h2>
+      <p class="subtitle">Draft: upload or pick an image; future update will generate seamless tiles. Preview coming soon.</p>
+      <div class="pill-note">Selected media: <span id="seamlessSelected">None</span></div>
+      <form id="seamlessForm">
+        <label>
+          Image file (or select from Media Library)
+          <input type="file" name="seamless_image" accept=".png,.jpg,.jpeg,.webp">
+        </label>
+        <div class="inline">
+          <label>Tile size (px) <input type="number" name="seamless_size" min="32" value="512"></label>
+          <label>Feather (px) <input type="number" name="seamless_feather" min="0" value="16"></label>
+        </div>
+        <button type="button" id="seamlessStub">Preview (coming soon)</button>
+        <div class="status" id="seamlessStatus">This tool is a placeholder; backend not implemented yet.</div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span>Seamless preview will appear here.</span>
+      </div>
+    </section>
+  </main>
+
+  <main id="tabParallaxTool" style="display:none;">
+    <section class="panel">
+      <h2>Video → Parallax Layers</h2>
+      <p class="subtitle">Draft: upload/select a landscape video to extract parallax foreground/mid/background. Preview-only placeholder.</p>
+      <div class="pill-note">Selected media: <span id="parallaxSelected">None</span></div>
+      <form id="parallaxForm">
+        <label>
+          Video file (or select from Media Library)
+          <input type="file" name="parallax_video" accept=".mp4,.mov,.avi,.mkv,.webm">
+        </label>
+        <div class="inline">
+          <label>Segments <input type="number" name="parallax_segments" min="2" value="3"></label>
+          <label>Sample frames <input type="number" name="parallax_samples" min="1" value="10"></label>
+        </div>
+        <button type="button" id="parallaxStub">Preview layers (coming soon)</button>
+        <div class="status" id="parallaxStatus">Parallax extraction is not implemented yet; this UI is a placeholder.</div>
+      </form>
+      <div class="preview checker" style="margin-top:12px; min-height:220px;">
+        <span>Parallax preview will appear here.</span>
+      </div>
+    </section>
+  </main>
     </div>
   </div>
 
@@ -1390,6 +1438,8 @@
     const selectedIndicator = document.getElementById("selectedIndicator");
     const spritesSelected = document.getElementById("spritesSelected");
     const imageLabSelected = document.getElementById("imageLabSelected");
+    const seamlessSelected = document.getElementById("seamlessSelected");
+    const parallaxSelected = document.getElementById("parallaxSelected");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -1414,6 +1464,8 @@
       if (selectedIndicator) selectedIndicator.textContent = label;
       if (spritesSelected) spritesSelected.textContent = label;
       if (imageLabSelected) imageLabSelected.textContent = label;
+      if (seamlessSelected) seamlessSelected.textContent = label;
+      if (parallaxSelected) parallaxSelected.textContent = label;
       document.querySelectorAll('[name$="_artifact_url"]').forEach((input) => {
         input.value = url || "";
       });
@@ -1952,6 +2004,14 @@
       handleFiles(files);
     });
 
+    // Placeholder alerts for draft tools
+    document.getElementById("seamlessStub").addEventListener("click", () => {
+      updateStatus(seamlessStatus, "Seamless preview coming soon. Backend not implemented.", true);
+    });
+    document.getElementById("parallaxStub").addEventListener("click", () => {
+      updateStatus(parallaxStatus, "Parallax extraction coming soon. Backend not implemented.", true);
+    });
+
     // Animation + transparency helpers
     const loadSheetForAnimation = (url, data) => {
       currentSheetUrl = url;
@@ -2099,6 +2159,8 @@
         canvasPad: document.getElementById("tabCanvasPad"),
         rotateCrop: document.getElementById("tabRotateCrop"),
         imageStudio: document.getElementById("tabImageStudio"),
+        seamlessTool: document.getElementById("tabSeamlessTool"),
+        parallaxTool: document.getElementById("tabParallaxTool"),
         library: document.getElementById("tabLibrary"),
       };
       Object.entries(views).forEach(([key, el]) => {
