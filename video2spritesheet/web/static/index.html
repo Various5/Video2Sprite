@@ -759,6 +759,7 @@
         <span id="libraryDropHint">Drop files here or click to upload</span>
       </div>
       <input type="file" id="libraryFileInput" style="display:none;" multiple accept=".png,.jpg,.jpeg,.webp,.mp4,.mov,.avi,.mkv,.webm">
+      <div class="status" id="libraryStatus"></div>
       <div class="media-grid" style="margin-top:12px;">
         <div>
           <h3 style="margin:0 0 6px;">Videos</h3>
@@ -1887,6 +1888,7 @@
         artifactList.innerHTML = "";
         libraryVideoList.innerHTML = "";
         libraryImageList.innerHTML = "";
+        if (libraryArtifactsList) libraryArtifactsList.innerHTML = "";
         const libraryArtifactsList = document.getElementById("libraryArtifactsList");
         if (libraryArtifactsList) libraryArtifactsList.innerHTML = "";
 
@@ -1939,7 +1941,7 @@
               }
               await refreshArtifacts();
             } catch (err) {
-              updateStatus(statusEl, err.message || "Rename failed", true);
+              updateStatus(libraryStatus || statusEl, err.message || "Rename failed", true);
             }
           });
           const del = document.createElement("button");
@@ -1955,9 +1957,9 @@
                 throw new Error(detail.detail || "Delete failed");
               }
               await refreshArtifacts();
-              updateStatus(statusEl, `Deleted ${name}`, false, true);
+              updateStatus(libraryStatus || statusEl, `Deleted ${name}`, false, true);
             } catch (err) {
-              updateStatus(statusEl, err.message || "Delete failed", true);
+              updateStatus(libraryStatus || statusEl, err.message || "Delete failed", true);
             }
           });
           actions.appendChild(renameBtn);
@@ -1989,10 +1991,28 @@
           li.addEventListener("click", () => window.open(href, "_blank"));
           artifactList.appendChild(li);
           if (libraryArtifactsList) {
-            const li2 = document.createElement("li");
-            li2.textContent = name;
-            li2.addEventListener("click", () => window.open(href, "_blank"));
-            libraryArtifactsList.appendChild(li2);
+            const row = document.createElement("li");
+            const del = document.createElement("button");
+            del.type = "button";
+            del.className = "ghost danger small";
+            del.textContent = "Delete";
+            del.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              try {
+                const resp = await fetch(`/api/media?path=${encodeURIComponent(href)}`, { method: "DELETE" });
+                if (!resp.ok) {
+                  const detail = await resp.json().catch(() => ({}));
+                  throw new Error(detail.detail || "Delete failed");
+                }
+                await refreshArtifacts();
+                updateStatus(libraryStatus || statusEl, `Deleted ${name}`, false, true);
+              } catch (err) {
+                updateStatus(libraryStatus || statusEl, err.message || "Delete failed", true);
+              }
+            });
+            row.textContent = name;
+            row.appendChild(del);
+            libraryArtifactsList.appendChild(row);
           }
         });
       } catch (err) {
