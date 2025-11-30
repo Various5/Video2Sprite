@@ -21,7 +21,12 @@ FastAPI + PySide toolkit to turn videos into spritesheets with a modern web UI, 
    uvicorn video2spritesheet.web.server:app --host 0.0.0.0 --port 8000
    ```
    Or use the systemd unit (`video2sprite.service`) if installed.
-3) Open `http://<host>:8000/login`, register first user, then log in and use the UI.
+3) Open `http://<host>:8000/login`, register first user, then log in and use the UI. CSRF is enforced; the UI injects the token automatically.
+
+### Security defaults
+- CORS is restricted; override with `V2S_ALLOWED_ORIGINS="https://your.host,https://other.host"` if you host elsewhere.
+- Auth cookies are `Secure` + `SameSite=Strict`; serve over HTTPS.
+- Uploads are capped to ~50MB per request and renamed with UUIDs to avoid collisions.
 
 ## Media handling
 - Uploads in the web UI land in:
