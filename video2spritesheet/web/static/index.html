@@ -386,6 +386,7 @@
       transition: border 0.18s ease, box-shadow 0.18s ease;
     }
     .media-card:hover { border-color: var(--accent); box-shadow: var(--glow); }
+    .media-card.selected { border-color: var(--accent-strong); box-shadow: 0 0 0 2px rgba(155, 231, 180, 0.35); }
     .media-thumb {
       width: 100%;
       height: 140px;
@@ -397,6 +398,13 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+    .media-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
     }
     .artifact-list {
       list-style: none;
@@ -496,22 +504,22 @@
       </div>
       <button class="nav-toggle" id="navToggle">Collapse menu</button>
       <div class="nav-links">
-        <button class="nav-link active" data-target="sprites">Video2Sprite</button>
-        <button class="nav-link" data-target="imageStudio">Image Studio</button>
-        <button class="nav-link" data-target="images">Image Lab</button>
-        <button class="nav-link" data-target="quickResize">Quick Resize</button>
-        <button class="nav-link" data-target="maskMaker">Mask Builder</button>
-        <button class="nav-link" data-target="colorTuner">Color Tuner</button>
-        <button class="nav-link" data-target="cropper">Smart Crop</button>
-        <button class="nav-link" data-target="bgRemover">Background Remover</button>
-        <button class="nav-link" data-target="fitTool">Square Fit</button>
-        <button class="nav-link" data-target="monoTool">Mono / Invert</button>
-        <button class="nav-link" data-target="blurTool">Blur / Rotate</button>
-        <button class="nav-link" data-target="flipTool">Flip Studio</button>
-        <button class="nav-link" data-target="toneTool">Tone Balance</button>
-        <button class="nav-link" data-target="canvasPad">Canvas Pad</button>
-        <button class="nav-link" data-target="rotateCrop">Rotate & Crop</button>
-        <button class="nav-link" data-target="library">Media Library</button>
+        <button class="nav-link active" data-target="sprites" onclick="setView('sprites')">Video2Sprite</button>
+        <button class="nav-link" data-target="imageStudio" onclick="setView('imageStudio')">Image Studio</button>
+        <button class="nav-link" data-target="images" onclick="setView('images')">Image Lab</button>
+        <button class="nav-link" data-target="quickResize" onclick="setView('quickResize')">Quick Resize</button>
+        <button class="nav-link" data-target="maskMaker" onclick="setView('maskMaker')">Mask Builder</button>
+        <button class="nav-link" data-target="colorTuner" onclick="setView('colorTuner')">Color Tuner</button>
+        <button class="nav-link" data-target="cropper" onclick="setView('cropper')">Smart Crop</button>
+        <button class="nav-link" data-target="bgRemover" onclick="setView('bgRemover')">Background Remover</button>
+        <button class="nav-link" data-target="fitTool" onclick="setView('fitTool')">Square Fit</button>
+        <button class="nav-link" data-target="monoTool" onclick="setView('monoTool')">Mono / Invert</button>
+        <button class="nav-link" data-target="blurTool" onclick="setView('blurTool')">Blur / Rotate</button>
+        <button class="nav-link" data-target="flipTool" onclick="setView('flipTool')">Flip Studio</button>
+        <button class="nav-link" data-target="toneTool" onclick="setView('toneTool')">Tone Balance</button>
+        <button class="nav-link" data-target="canvasPad" onclick="setView('canvasPad')">Canvas Pad</button>
+        <button class="nav-link" data-target="rotateCrop" onclick="setView('rotateCrop')">Rotate & Crop</button>
+        <button class="nav-link" data-target="library" onclick="setView('library')">Media Library</button>
       </div>
     </aside>
     <div class="content">
@@ -1409,6 +1417,10 @@
       document.querySelectorAll('[name$="_artifact_url"]').forEach((input) => {
         input.value = url || "";
       });
+      document.querySelectorAll(".media-card").forEach((card) => {
+        const path = card.getAttribute("data-path");
+        card.classList.toggle("selected", path === url);
+      });
     };
     const getSelectedMediaPath = (type) => {
       if (!selectedMedia.path) return null;
@@ -1805,9 +1817,56 @@
 
         const addMediaRow = (targetList, href, typeLabel) => {
           const name = href.split("/").pop();
-          const li = document.createElement("li");
-          li.textContent = name;
-          li.addEventListener("click", () => setSelectedArtifact(href, typeLabel));
+          const card = document.createElement("div");
+          card.className = "media-card";
+          card.setAttribute("data-path", href);
+          card.setAttribute("data-type", typeLabel);
+          card.addEventListener("click", () => setSelectedArtifact(href, typeLabel));
+          const thumb = typeLabel === "image" ? document.createElement("img") : document.createElement("video");
+          thumb.className = "media-thumb";
+          thumb.src = href;
+          if (thumb.tagName === "VIDEO") {
+            thumb.muted = true;
+            thumb.loop = true;
+            thumb.preload = "metadata";
+            thumb.addEventListener("mouseenter", () => thumb.play().catch(() => {}));
+            thumb.addEventListener("mouseleave", () => thumb.pause());
+          }
+          card.appendChild(thumb);
+          const meta = document.createElement("div");
+          meta.className = "media-meta";
+          const label = document.createElement("span");
+          label.textContent = name;
+          const tag = document.createElement("span");
+          tag.className = "pill-note";
+          tag.textContent = typeLabel;
+          meta.appendChild(label);
+          meta.appendChild(tag);
+          card.appendChild(meta);
+          const actions = document.createElement("div");
+          actions.className = "media-actions";
+          const renameBtn = document.createElement("button");
+          renameBtn.type = "button";
+          renameBtn.className = "ghost small";
+          renameBtn.textContent = "Rename";
+          renameBtn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const newName = prompt("New name (without path)", name);
+            if (!newName) return;
+            const fd = new FormData();
+            fd.append("old_path", href);
+            fd.append("new_name", newName);
+            try {
+              const resp = await fetch("/api/media/rename", { method: "POST", body: fd });
+              if (!resp.ok) {
+                const detail = await resp.json().catch(() => ({}));
+                throw new Error(detail.detail || "Rename failed");
+              }
+              await refreshArtifacts();
+            } catch (err) {
+              updateStatus(statusEl, err.message || "Rename failed", true);
+            }
+          });
           const del = document.createElement("button");
           del.className = "ghost danger small";
           del.type = "button";
@@ -1826,13 +1885,10 @@
               updateStatus(statusEl, err.message || "Delete failed", true);
             }
           });
-          const right = document.createElement("div");
-          right.style.display = "flex";
-          right.style.gap = "8px";
-          right.style.alignItems = "center";
-          right.appendChild(del);
-          li.appendChild(right);
-          targetList.appendChild(li);
+          actions.appendChild(renameBtn);
+          actions.appendChild(del);
+          card.appendChild(actions);
+          targetList.appendChild(card);
         };
 
         if (!images.length && !videos.length && !manifests.length) {
@@ -2057,6 +2113,8 @@
       sidebar.classList.toggle("collapsed");
       navToggle.textContent = sidebar.classList.contains("collapsed") ? "Expand menu" : "Collapse menu";
     });
+    // Ensure nav is synced on load
+    setView("sprites");
     setView("sprites");
 
     // Image lab
