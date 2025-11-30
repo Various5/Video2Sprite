@@ -206,8 +206,8 @@
     main {
       padding: 0 0 28px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 16px;
       align-items: start;
     }
     #tabImageLab {
@@ -223,6 +223,9 @@
       padding: 18px 18px 22px;
       box-shadow: var(--shadow), var(--glow);
       backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
     .panel h2 {
       margin: 0 0 12px;
@@ -231,12 +234,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
-    }
-    .panel h2::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(90deg, rgba(155, 231, 180, 0.3), transparent);
+      justify-content: space-between;
+      flex-wrap: wrap;
     }
     form {
       display: grid;
@@ -554,7 +553,7 @@
 
   <main id="tabSprites">
     <section class="panel" style="grid-column: span 2;">
-      <h2>Media Pool</h2>
+      <h2>Media Pool <button type="button" class="ghost small" data-help="Upload and select media in the Library. The selected item is reused by all tools.">Help</button></h2>
       <p class="subtitle">Manage uploads in Media Library. Select a video/image there and it becomes available to all tools.</p>
       <div class="links" style="margin-top:10px;">
         <span class="pill">Selected:</span>
@@ -564,7 +563,7 @@
     </section>
 
     <section class="panel">
-      <h2>Spritesheet Builder</h2>
+      <h2>Spritesheet Builder <button type="button" class="ghost small" data-help="Use a video (upload or selected) to generate a spritesheet + JSON. Configure grid, sampling, background/key colors.">Help</button></h2>
       <div class="pill-note">Selected media: <span id="spritesSelected">None</span></div>
       <form id="uploadForm">
         <label>
@@ -651,7 +650,7 @@
       </section>
 
       <section class="panel">
-      <h2>Preview &amp; download</h2>
+      <h2>Preview &amp; download <button type="button" class="ghost small" data-help="Live playback of the generated sheet, mask toggle, FPS adjust, and download links.">Help</button></h2>
       <div class="preview checker" id="preview">
         <span id="previewPlaceholder">Your spritesheet will appear here.</span>
         <img id="previewImage" alt="Spritesheet preview" style="display:none;">
@@ -684,7 +683,7 @@
 
   <main id="tabImageStudio" style="display:none;">
     <section class="panel">
-      <h2>Image Studio</h2>
+      <h2>Image Studio <button type="button" class="ghost small" data-help="Batch image tweaks: resize, crop, rotate, blur, brightness/contrast, keying, flatten, flips, masks. Uses selected media if no upload.">Help</button></h2>
       <form id="studioForm">
         <label>
           Images (multi) or artifact URL
@@ -777,7 +776,7 @@
 
   <main id="tabImageLab" style="display:none;">
     <section class="panel">
-      <h2>Image Lab (beta)</h2>
+      <h2>Image Lab (beta) <button type="button" class="ghost small" data-help="Process images or sheets: resize, rotate, crop, chroma key, masks, flips, grayscale/invert, brightness/contrast, blur.">Help</button></h2>
       <div class="pill-note">Selected media: <span id="imageLabSelected">None</span></div>
       <form id="imageForm">
         <label>
@@ -876,7 +875,7 @@
 
   <main id="tabQuickResize" style="display:none;">
     <section class="panel">
-      <h2>Quick Resize / Compress</h2>
+      <h2>Quick Resize / Compress <button type="button" class="ghost small" data-help="Resize images quickly and optionally flatten with a background color.">Help</button></h2>
       <form id="resizeForm">
         <label>
           Image file (or paste artifact URL)
@@ -910,7 +909,7 @@
 
   <main id="tabMaskMaker" style="display:none;">
     <section class="panel">
-      <h2>Mask Builder</h2>
+      <h2>Mask Builder <button type="button" class="ghost small" data-help="Pick a key color and tolerance to build a mask or keyed image from selected/uploaded media.">Help</button></h2>
       <form id="maskForm">
         <label>
           Image file (or paste artifact URL)
@@ -945,7 +944,7 @@
 
   <main id="tabColorTuner" style="display:none;">
     <section class="panel">
-      <h2>Color Tuner</h2>
+      <h2>Color Tuner <button type="button" class="ghost small" data-help="Adjust brightness/contrast, blur, rotate, grayscale/invert, and flips on selected/uploaded media.">Help</button></h2>
       <form id="colorForm">
         <label>
           Image file (or paste artifact URL)
@@ -980,7 +979,7 @@
 
   <main id="tabCropper" style="display:none;">
     <section class="panel">
-      <h2>Smart Crop</h2>
+      <h2>Smart Crop <button type="button" class="ghost small" data-help="Crop images/sheets by coordinates and optionally resize for export.">Help</button></h2>
       <form id="cropForm">
         <label>
           Image file (or paste artifact URL)
@@ -1013,7 +1012,7 @@
 
   <main id="tabBgRemover" style="display:none;">
     <section class="panel">
-      <h2>Background Remover</h2>
+      <h2>Background Remover <button type="button" class="ghost small" data-help="Chroma key removal with tolerance and edge-aware cutout; output keyed image or mask.">Help</button></h2>
       <form id="bgForm">
         <label>
           Image file (or paste artifact URL)
@@ -1051,7 +1050,7 @@
 
   <main id="tabFitTool" style="display:none;">
     <section class="panel">
-      <h2>Square Fit</h2>
+      <h2>Square Fit <button type="button" class="ghost small" data-help="Resize to a square with optional rotation and background flatten color.">Help</button></h2>
       <form id="fitForm">
         <label>
           Image file (or paste artifact URL)
@@ -1085,7 +1084,7 @@
 
   <main id="tabMonoTool" style="display:none;">
     <section class="panel">
-      <h2>Mono / Invert</h2>
+      <h2>Mono / Invert <button type="button" class="ghost small" data-help="Grayscale/invert with brightness/contrast tweaks for quick mono outputs.">Help</button></h2>
       <form id="monoForm">
         <label>
           Image file (or paste artifact URL)
@@ -1113,7 +1112,7 @@
 
   <main id="tabBlurTool" style="display:none;">
     <section class="panel">
-      <h2>Blur / Rotate</h2>
+      <h2>Blur / Rotate <button type="button" class="ghost small" data-help="Apply blur and rotation to the selected/uploaded image.">Help</button></h2>
       <form id="blurForm">
         <label>
           Image file (or paste artifact URL)
@@ -1137,7 +1136,7 @@
 
   <main id="tabFlipTool" style="display:none;">
     <section class="panel">
-      <h2>Flip Studio</h2>
+      <h2>Flip Studio <button type="button" class="ghost small" data-help="Flip horizontally/vertically and rotate spritesheets or images.">Help</button></h2>
       <form id="flipForm">
         <label>
           Image file (or paste artifact URL)
@@ -1162,7 +1161,7 @@
 
   <main id="tabToneTool" style="display:none;">
     <section class="panel">
-      <h2>Tone Balance</h2>
+      <h2>Tone Balance <button type="button" class="ghost small" data-help="Brightness/contrast plus optional blur/rotate for tone balancing.">Help</button></h2>
       <form id="toneForm">
         <label>
           Image file (or paste artifact URL)
@@ -1190,7 +1189,7 @@
 
   <main id="tabCanvasPad" style="display:none;">
     <section class="panel">
-      <h2>Canvas Pad</h2>
+      <h2>Canvas Pad <button type="button" class="ghost small" data-help="Resize and flatten against a chosen background color/alpha.">Help</button></h2>
       <form id="padForm">
         <label>
           Image file (or paste artifact URL)
@@ -1224,7 +1223,7 @@
 
   <main id="tabRotateCrop" style="display:none;">
     <section class="panel">
-      <h2>Rotate &amp; Crop</h2>
+      <h2>Rotate &amp; Crop <button type="button" class="ghost small" data-help="Crop bounds then rotate; optional resize for export.">Help</button></h2>
       <form id="rotForm">
         <label>
           Image file (or paste artifact URL)
