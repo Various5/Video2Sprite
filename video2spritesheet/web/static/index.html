@@ -106,10 +106,10 @@
       color: var(--accent);
     }
     .content {
-      width: calc(100% - 24px);
+      width: calc(100% - 16px);
       margin: 0 auto;
       padding: 0 0 28px;
-      max-width: 1600px;
+      max-width: 100%;
     }
     body::before {
       content: "";
@@ -126,10 +126,10 @@
     header, main, #tabImageLab { position: relative; z-index: 1; }
     header {
       padding: 28px 0 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: 1fr auto;
       gap: 16px;
+      align-items: center;
       flex-wrap: wrap;
     }
     .title {
@@ -206,7 +206,7 @@
     main {
       padding: 0 0 28px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
       gap: 20px;
       align-items: start;
     }
@@ -519,7 +519,7 @@
     <div class="title">
       <div class="eyebrow">Video → Sprite pipeline</div>
       <h1>Video2SpriteSheet Web</h1>
-      <div class="subtitle">Drop in a clip, tune your sampling, and instantly ship a spritesheet + manifest with a crisp, grey/green console-inspired UI.</div>
+      <div class="subtitle">Unified media library + spritesheet builder + image tools. Upload once, reuse everywhere.</div>
       <div class="badge-row">
         <span class="pill">FastAPI</span>
         <span class="pill">No installs for viewers</span>
@@ -528,16 +528,16 @@
     </div>
     <div class="stat-grid">
       <div class="stat">
+        <span class="stat-label">Current media</span>
+        <strong id="selectedIndicator">None</strong>
+      </div>
+      <div class="stat">
         <span class="stat-label">Outputs</span>
         <strong>Sprites + JSON</strong>
       </div>
       <div class="stat">
-        <span class="stat-label">Upload size</span>
-        <strong>Up to 512 MB</strong>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Playback</span>
-        <strong>Live preview</strong>
+        <span class="stat-label">Library</span>
+        <button class="ghost small" type="button" onclick="setView('library')">Open Library</button>
       </div>
     </div>
   </header>
@@ -555,6 +555,7 @@
 
     <section class="panel">
       <h2>Spritesheet Builder</h2>
+      <div class="pill-note">Selected media: <span id="spritesSelected">None</span></div>
       <form id="uploadForm">
         <label>
           Video file
@@ -767,6 +768,7 @@
   <main id="tabImageLab" style="display:none;">
     <section class="panel">
       <h2>Image Lab (beta)</h2>
+      <div class="pill-note">Selected media: <span id="imageLabSelected">None</span></div>
       <form id="imageForm">
         <label>
           Image or spritesheet
@@ -1377,6 +1379,9 @@
     const rotLinks = document.getElementById("rotLinks");
     const selectedArtifactBadge = document.getElementById("selectedArtifact");
     const selectedArtifactLibraryBadge = document.getElementById("selectedArtifactLibrary");
+    const selectedIndicator = document.getElementById("selectedIndicator");
+    const spritesSelected = document.getElementById("spritesSelected");
+    const imageLabSelected = document.getElementById("imageLabSelected");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -1398,6 +1403,9 @@
       const label = url || "None";
       if (selectedArtifactBadge) selectedArtifactBadge.textContent = label;
       if (selectedArtifactLibraryBadge) selectedArtifactLibraryBadge.textContent = label;
+      if (selectedIndicator) selectedIndicator.textContent = label;
+      if (spritesSelected) spritesSelected.textContent = label;
+      if (imageLabSelected) imageLabSelected.textContent = label;
       document.querySelectorAll('[name$="_artifact_url"]').forEach((input) => {
         input.value = url || "";
       });
@@ -2043,6 +2051,7 @@
       });
       navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target === view));
     };
+    window.setView = setView;
     navLinks.forEach((link) => link.addEventListener("click", () => setView(link.dataset.target)));
     navToggle.addEventListener("click", () => {
       sidebar.classList.toggle("collapsed");
