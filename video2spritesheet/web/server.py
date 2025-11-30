@@ -19,6 +19,9 @@ from PIL import Image, ImageChops, ImageFilter, ImageEnhance
 from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
+import os
+import uuid
+
 from ..core import GenerationSettings, ProcessingOutcome
 from ..core import frame_extractor, manifest_writer, spritesheet_builder, video_loader
 from ..core.errors import InvalidVideoError, ProcessingError, ValidationError
@@ -36,6 +39,13 @@ INDEX_PATH = STATIC_DIR / "index.html"
 LOGIN_PATH = STATIC_DIR / "login.html"
 USERS_PATH = BASE_DIR / "config" / "users.json"
 SESSION_TTL_SECONDS = 7 * 24 * 3600
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB guardrail
+MAX_FRAME_CAP = 400
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("V2S_ALLOWED_ORIGINS", "https://v2s.drevalis.com,http://localhost:8000").split(",")
+    if origin.strip()
+]
 file_tools.ensure_directory(ARTIFACTS_DIR)
 file_tools.ensure_directory(MEDIA_IMAGES_DIR)
 file_tools.ensure_directory(MEDIA_VIDEOS_DIR)
@@ -63,8 +73,9 @@ def _load_users() -> list[dict[str, str]]:
     try:
         with USERS_PATH.open("r", encoding="utf-8") as handle:
             return json.load(handle)
-    except Exception:
-        return []
+    except Exception as exc:
+        logger.error("Failed to read users.json, refusing to open registration: %s", exc)
+        raise HTTPException(status_code=500, detail="User store unavailable") from exc
 
 
 def _save_users(users: list[dict[str, str]]) -> None:
@@ -75,7 +86,8 @@ def _save_users(users: list[dict[str, str]]) -> None:
 
 def _issue_session(username: str) -> str:
     token = secrets.token_urlsafe(32)
-    _SESSIONS[token] = {"user": username, "expires": time.time() + SESSION_TTL_SECONDS}
+    csrf = secrets.token_urlsafe(24)
+    _SESSIONS[token] = {"user": username, "expires": time.time() + SESSION_TTL_SECONDS, "csrf": csrf}
     return token
 
 
@@ -89,6 +101,18 @@ def _get_session(token: Optional[str]) -> Optional[str]:
         _SESSIONS.pop(token, None)
         return None
     return data["user"]
+
+
+def _get_session_record(token: Optional[str]) -> Optional[dict[str, Any]]:
+    if not token:
+        return None
+    data = _SESSIONS.get(token)
+    if not data:
+        return None
+    if data["expires"] < time.time():
+        _SESSIONS.pop(token, None)
+        return None
+    return data
 
 
 class GenerationRequest(BaseModel):
@@ -213,9 +237,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Video2SpriteSheet Web", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=ALLOWED_ORIGINS,
         allow_methods=["*"],
         allow_headers=["*"],
+        allow_credentials=True,
     )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -233,6 +258,13 @@ def create_app() -> FastAPI:
             user = _get_session(request.cookies.get("v2s_session"))
             if not user:
                 return RedirectResponse(url="/login", status_code=307)
+        # CSRF: require header for state-changing requests when session exists
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"} and not request.url.path.startswith("/auth/"):
+            session = _get_session_record(request.cookies.get("v2s_session"))
+            if session:
+                header_token = request.headers.get("x-csrf-token")
+                if not header_token or header_token != session.get("csrf"):
+                    raise HTTPException(status_code=403, detail="CSRF token missing or invalid")
         return await call_next(request)
 
     @app.get("/health")
@@ -259,7 +291,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/api/media/upload")
-    async def upload_media(file: UploadFile = File(...), user: str = Depends(require_auth)) -> dict[str, str]:
+    async def upload_media(request: Request, file: UploadFile = File(...), user: str = Depends(require_auth)) -> dict[str, str]:
         suffix = Path(file.filename or "").suffix.lower()
         image_exts = {".png", ".jpg", ".jpeg", ".webp"}
         video_exts = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
@@ -271,11 +303,9 @@ def create_app() -> FastAPI:
             media_type = "video"
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type")
+        _enforce_size_limit(request)
         target_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = int(time.time() * 1000)
-        target = target_dir / f"upload_{timestamp}{suffix or '.dat'}"
-        with target.open("wb") as handle:
-            shutil.copyfileobj(file.file, handle)
+        target = _write_upload_file(file, target_dir, suffix or ".dat")
         rel = target.relative_to(ARTIFACTS_DIR)
         return {"status": "ok", "type": media_type, "path": f"/artifacts/{rel.as_posix()}"}
 
@@ -326,6 +356,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/process-image")
     async def process_image(
+        request: Request,
         image: UploadFile | None = File(None),
         media_path: Optional[str] = Form(None),
         settings: str = Form("{}"),
@@ -346,6 +377,7 @@ def create_app() -> FastAPI:
             if media_path:
                 local_image = _resolve_media_path(media_path, MEDIA_IMAGES_DIR, {".png", ".jpg", ".jpeg", ".webp"})
             elif image:
+                _enforce_size_limit(request)
                 local_image = await _persist_upload(image, subdir="images")
             else:
                 raise HTTPException(status_code=400, detail="Provide an image or media_path")
@@ -364,6 +396,7 @@ def create_app() -> FastAPI:
     @app.post("/api/generate", response_model=GenerationResponse)
     async def generate_spritesheet(
         background_tasks: BackgroundTasks,
+        request: Request,
         video: UploadFile | None = File(None),
         media_path: Optional[str] = Form(None),
         settings: str = Form("{}"),
@@ -384,9 +417,12 @@ def create_app() -> FastAPI:
             if media_path:
                 local_video = _resolve_media_path(media_path, MEDIA_VIDEOS_DIR, {".mp4", ".mov", ".avi", ".mkv", ".webm"})
             elif video:
+                _enforce_size_limit(request)
                 local_video = await _persist_upload(video)
             else:
                 raise HTTPException(status_code=400, detail="Provide a video or media_path")
+            if request_settings.max_frames is None or request_settings.max_frames > MAX_FRAME_CAP:
+                request_settings.max_frames = MAX_FRAME_CAP
             result = await run_in_threadpool(_run_generation, local_video, request_settings)
         except (InvalidVideoError, ValidationError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -419,6 +455,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/seamless-texture")
     async def seamless_texture(
+        request: Request,
         image: UploadFile | None = File(None),
         media_path: Optional[str] = Form(None),
         tile_size: Optional[int] = Form(None),
@@ -430,6 +467,7 @@ def create_app() -> FastAPI:
             if media_path:
                 local_image = _resolve_media_path(media_path, MEDIA_IMAGES_DIR, {".png", ".jpg", ".jpeg", ".webp"})
             elif image:
+                _enforce_size_limit(request)
                 local_image = await _persist_upload(image, subdir="images")
             else:
                 raise HTTPException(status_code=400, detail="Provide an image or media_path")
@@ -442,6 +480,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/parallax-preview")
     async def parallax_preview(
+        request: Request,
         video: UploadFile | None = File(None),
         media_path: Optional[str] = Form(None),
         segments: int = Form(3),
@@ -453,6 +492,7 @@ def create_app() -> FastAPI:
             if media_path:
                 local_video = _resolve_media_path(media_path, MEDIA_VIDEOS_DIR, {".mp4", ".mov", ".avi", ".mkv", ".webm"})
             elif video:
+                _enforce_size_limit(request)
                 local_video = await _persist_upload(video)
             else:
                 raise HTTPException(status_code=400, detail="Provide a video or media_path")
@@ -500,10 +540,23 @@ async def _persist_upload(file: UploadFile, subdir: str = "uploads") -> Path:
     suffix = Path(file.filename or "upload").suffix or ".dat"
     target_dir = ARTIFACTS_DIR / subdir
     file_tools.ensure_directory(target_dir)
-    timestamp = int(time.time())
-    target = target_dir / f"upload_{timestamp}{suffix}"
+    return _write_upload_file(file, target_dir, suffix)
+
+
+def _write_upload_file(file: UploadFile, target_dir: Path, suffix: str) -> Path:
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"{uuid.uuid4().hex}{suffix}"
+    written = 0
     with target.open("wb") as handle:
-        shutil.copyfileobj(file.file, handle)
+        while True:
+            chunk = file.file.read(1024 * 1024)
+            if not chunk:
+                break
+            written += len(chunk)
+            if written > MAX_UPLOAD_BYTES:
+                target.unlink(missing_ok=True)
+                raise HTTPException(status_code=413, detail="File too large")
+            handle.write(chunk)
     return target
 
 
@@ -522,6 +575,20 @@ def _resolve_media_path(path_str: str, base_dir: Path, allowed: set[str]) -> Pat
     if resolved.suffix.lower() not in allowed:
         raise HTTPException(status_code=400, detail="Unsupported media type")
     return resolved
+
+
+def _enforce_size_limit(request: Request) -> None:
+    """Simple guardrail on upload size based on Content-Length."""
+
+    content_length = request.headers.get("content-length")
+    if not content_length:
+        return
+    try:
+        size = int(content_length)
+    except ValueError:
+        return
+    if size > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Upload exceeds limit")
 
 
 def _cleanup_file(path: Path) -> None:
@@ -550,6 +617,9 @@ def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationR
     background_color = request.background_color
     chroma_color = request.chroma_key_color or background_color or (0, 0, 0, 255)
 
+    capped_frames = (
+        min(request.max_frames, MAX_FRAME_CAP) if request.max_frames is not None else MAX_FRAME_CAP
+    )
     settings = GenerationSettings(
         video_path=video_path,
         output_path=output_path,
@@ -563,7 +633,7 @@ def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationR
         rows=request.rows,
         generate_manifest=request.generate_manifest,
         manifest_path=output_path.with_suffix(".json") if request.generate_manifest else None,
-        max_frames=request.max_frames,
+        max_frames=capped_frames,
         background_color=background_color,
         remove_black_background=request.remove_black_background,
         chroma_key_color=chroma_color,
@@ -708,24 +778,34 @@ async def login(payload: dict[str, str], response: Response) -> dict[str, str]:
                 "v2s_session",
                 token,
                 httponly=True,
-                samesite="lax",
-                secure=False,
+                samesite="strict",
+                secure=True,
                 max_age=SESSION_TTL_SECONDS,
             )
-            return {"status": "ok", "user": username}
+            session = _get_session_record(token)
+            response.set_cookie(
+                "v2s_csrf",
+                session["csrf"] if session else "",
+                httponly=False,
+                samesite="strict",
+                secure=True,
+                max_age=SESSION_TTL_SECONDS,
+            )
+            return {"status": "ok", "user": username, "csrf": session["csrf"] if session else ""}
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 @app.post("/auth/logout")
 async def logout(response: Response) -> dict[str, str]:
     response.delete_cookie("v2s_session")
+    response.delete_cookie("v2s_csrf")
     return {"status": "logged_out"}
 
 
 @app.get("/auth/status")
 async def auth_status(request: Request) -> dict[str, Any]:
-    user = _get_session(request.cookies.get("v2s_session"))
-    return {"authenticated": bool(user), "user": user}
+    record = _get_session_record(request.cookies.get("v2s_session"))
+    return {"authenticated": bool(record), "user": record["user"] if record else None}
 
 
 if __name__ == "__main__":  # pragma: no cover

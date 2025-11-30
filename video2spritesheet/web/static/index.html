@@ -1376,6 +1376,17 @@
   </div>
 
   <script>
+    const getCookie = (name) => {
+      const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+      return match ? decodeURIComponent(match[2]) : null;
+    };
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+      const headers = new Headers(init.headers || {});
+      const csrf = getCookie("v2s_csrf");
+      if (csrf) headers.set("x-csrf-token", csrf);
+      return nativeFetch(input, { ...init, headers });
+    };
     const form = document.getElementById("uploadForm");
     const statusEl = document.getElementById("status");
     const previewImg = document.getElementById("previewImage");
