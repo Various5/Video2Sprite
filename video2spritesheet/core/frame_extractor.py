@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Iterable, Iterator, List, Tuple
 
 import numpy as np
 from PIL import Image
@@ -56,13 +56,8 @@ def _compute_sample_times(
     return unique_times
 
 
-def extract_frames(
-    settings: GenerationSettings, metadata: VideoMetadata
-) -> Tuple[List[Image.Image], List[FrameInfo]]:
-    """Extract frames as PIL Images along with FrameInfo metadata."""
-
-    clip_class = _resolve_video_file_clip()
-    _ensure_ffmpeg_available()
+def extract_frames(settings: GenerationSettings, metadata: VideoMetadata) -> Tuple[List[Image.Image], List[FrameInfo]]:
+    """Extract frames eagerly (legacy API)."""
 
     times = _compute_sample_times(
         metadata,
@@ -72,11 +67,36 @@ def extract_frames(
         settings.start_time,
         settings.end_time,
     )
-    logger.info("Extracting %s frames from %s", len(times), settings.video_path)
+    frames = []
+    infos = []
+    for frame, info in iter_frames(settings, metadata, times):
+        frames.append(frame)
+        infos.append(info)
+    if not frames:
+        raise ProcessingError("No frames could be extracted from the video.")
+    return frames, infos
+
+
+def iter_frames(
+    settings: GenerationSettings, metadata: VideoMetadata, times: list[float] | None = None
+) -> Iterator[tuple[Image.Image, FrameInfo]]:
+    """Yield frames one-by-one to reduce memory pressure."""
+
+    clip_class = _resolve_video_file_clip()
+    _ensure_ffmpeg_available()
+
+    times = times or _compute_sample_times(
+        metadata,
+        settings.frame_count,
+        settings.frame_interval,
+        settings.max_frames,
+        settings.start_time,
+        settings.end_time,
+    )
+    logger.info("Extracting %s frames from %s (streaming)", len(times), settings.video_path)
+    clip = None
     try:
         clip = clip_class(str(settings.video_path))
-        frames: list[Image.Image] = []
-        infos: list[FrameInfo] = []
         for idx, ts in enumerate(times):
             try:
                 frame_array = clip.get_frame(ts)
@@ -89,20 +109,15 @@ def extract_frames(
             if target_size:
                 image = image.resize(target_size)
 
-            frames.append(image.convert("RGBA"))
-            infos.append(FrameInfo(index=idx, timestamp=ts, width=image.width, height=image.height))
+            yield image.convert("RGBA"), FrameInfo(index=idx, timestamp=ts, width=image.width, height=image.height)
     except Exception as exc:  # pragma: no cover - moviepy internals
         raise ProcessingError(f"Failed to open video: {exc}") from exc
     finally:
         try:
-            clip.close()
+            if clip:
+                clip.close()
         except Exception:
             pass
-
-    if not frames:
-        raise ProcessingError("No frames could be extracted from the video.")
-
-    return frames, infos
 
 
 def iter_frame_batches(frames: Iterable[Image.Image], batch_size: int = 50) -> Iterable[list[Image.Image]]:

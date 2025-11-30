@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import logging
+from itertools import chain
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
@@ -38,17 +39,31 @@ def build_spritesheet(
     infos: List[FrameInfo],
     settings: GenerationSettings,
 ) -> Tuple[Path, Image.Image, List[FrameInfo]]:
+    """Backwards-compatible wrapper using streaming builder."""
+
+    frame_items = [(frame, info) for frame, info in zip(frames, infos)]
+    return build_spritesheet_streaming(frame_items, len(frames), settings)
+
+
+def build_spritesheet_streaming(
+    frame_items: Iterable[tuple[Image.Image, FrameInfo]],
+    frame_count: int,
+    settings: GenerationSettings,
+) -> Tuple[Path, Image.Image, List[FrameInfo]]:
     """Pack frames into a spritesheet image and persist to disk."""
 
     output_path = settings.output_path.with_suffix(".png")
     file_tools.ensure_directory(output_path.parent)
 
-    columns, rows = _resolve_grid(len(frames), settings.columns, settings.rows)
-
-    if not frames:
+    frame_iter = iter(frame_items)
+    try:
+        first_frame, first_info = next(frame_iter)
+    except StopIteration:
         raise ValueError("No frames provided to pack.")
 
-    frame_width, frame_height = frames[0].size
+    columns, rows = _resolve_grid(frame_count, settings.columns, settings.rows)
+
+    frame_width, frame_height = first_frame.size
     pad = max(0, settings.padding)
     cell_w = frame_width + pad
     cell_h = frame_height + pad
@@ -58,7 +73,8 @@ def build_spritesheet(
     sheet = Image.new("RGBA", (sheet_width, sheet_height), bg)
 
     updated_infos: list[FrameInfo] = []
-    for idx, (frame, info) in enumerate(zip(frames, infos)):
+    all_frames = chain([(first_frame, first_info)], frame_iter)
+    for idx, (frame, info) in enumerate(all_frames):
         frame_to_paste = _apply_chroma_key(frame, settings) if settings.remove_black_background else frame
         col = idx % columns
         row = idx // columns

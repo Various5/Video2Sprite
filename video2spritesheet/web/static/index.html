@@ -693,6 +693,7 @@
         <div class="switch"><input type="checkbox" name="generate_manifest" checked> Generate JSON manifest</div>
         <div class="switch"><input type="checkbox" name="remove_black_background" checked> Make black transparent</div>
         <div class="switch"><input type="checkbox" name="auto_edge_cutout" checked> Edge-aware cutout</div>
+        <div class="switch"><input type="checkbox" name="preview_only" id="preview_only"> Preview only (auto cleanup)</div>
           <button type="submit">Generate spritesheet</button>
           <div class="status" id="status"></div>
         </form>
@@ -1887,6 +1888,7 @@
         chroma_key_tolerance: numOrNull(form.chroma_key_tolerance.value) ?? 12,
         auto_edge_cutout: form.auto_edge_cutout.checked,
         output_pattern: form.output_pattern.value.trim(),
+        preview_only: form.preview_only.checked,
       };
       const queue = files.length ? files : [null];
       for (const file of queue) {

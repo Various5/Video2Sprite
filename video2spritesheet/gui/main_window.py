@@ -83,41 +83,52 @@ class GenerationWorker(QRunnable):
             meta = self.metadata or video_loader.load_metadata(self.settings.video_path)
             self.signals.status.emit("Extracting frames...")
             self.signals.progress.emit(10)
-            frames, infos = frame_extractor.extract_frames(self.settings, meta)
+            times = frame_extractor._compute_sample_times(  # type: ignore[attr-defined]
+                meta,
+                self.settings.frame_count,
+                self.settings.frame_interval,
+                self.settings.max_frames,
+                self.settings.start_time,
+                self.settings.end_time,
+            )
+            frame_iter = frame_extractor.iter_frames(self.settings, meta, times)
             self.signals.progress.emit(40)
 
             if self._cancelled:
                 self.signals.cancelled.emit()
                 return
 
+            # Apply selection filtering by wrapping generator if needed
             if self.selected_indices:
-                filtered = [
-                    (frame, info) for frame, info in zip(frames, infos) if info.index in self.selected_indices
-                ]
-                if filtered:
-                    frames, infos = zip(*filtered)  # type: ignore
-                    frames, infos = list(frames), list(infos)
+                selected_set = set(self.selected_indices)
+
+                def filtered_iter():
+                    for frame, info in frame_iter:
+                        if info.index in selected_set:
+                            yield frame, info
+
+                frame_iter = filtered_iter()
 
             if self._cancelled:
                 self.signals.cancelled.emit()
                 return
 
             self.signals.status.emit("Building spritesheet...")
-            frames_for_pack = [
-                spritesheet_builder._apply_chroma_key(f, self.settings) if self.settings.remove_black_background else f
-                for f in frames
-            ]
-            spritesheet_path, sheet_image, packed_infos = spritesheet_builder.build_spritesheet(
-                frames_for_pack, infos, self.settings
+            spritesheet_path, sheet_image, packed_infos = spritesheet_builder.build_spritesheet_streaming(
+                frame_iter, len(times), self.settings
             )
             self.signals.progress.emit(75)
 
-            thumbnails = _build_thumbnails(frames_for_pack)
+            thumbnails = []
+            for info in packed_infos[:12]:
+                crop = sheet_image.crop((info.x, info.y, info.x + info.width, info.y + info.height))
+                crop.thumbnail((96, 96))
+                thumbnails.append(crop)
 
             manifest_path = None
             if self.settings.generate_manifest:
                 self.signals.status.emit("Writing manifest...")
-                columns, rows = spritesheet_builder._resolve_grid(len(frames), self.settings.columns, self.settings.rows)
+                columns, rows = spritesheet_builder._resolve_grid(len(times), self.settings.columns, self.settings.rows)
                 manifest_path = manifest_writer.write_manifest(packed_infos, self.settings, columns, rows)
             self.signals.progress.emit(90)
 

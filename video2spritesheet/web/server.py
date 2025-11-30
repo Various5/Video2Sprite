@@ -34,13 +34,17 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 ARTIFACTS_DIR = BASE_DIR / "artifacts"
 MEDIA_IMAGES_DIR = ARTIFACTS_DIR / "images"
 MEDIA_VIDEOS_DIR = ARTIFACTS_DIR / "videos"
+PREVIEWS_DIR = ARTIFACTS_DIR / "previews"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 INDEX_PATH = STATIC_DIR / "index.html"
 LOGIN_PATH = STATIC_DIR / "login.html"
 USERS_PATH = BASE_DIR / "config" / "users.json"
+USAGE_PATH = BASE_DIR / "config" / "usage.json"
 SESSION_TTL_SECONDS = 7 * 24 * 3600
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB guardrail
 MAX_FRAME_CAP = 400
+PREVIEW_TTL_SECONDS = 60 * 30  # 30 minutes
+PER_USER_QUOTA = int(os.environ.get("V2S_USER_QUOTA_MB", "1024")) * 1024 * 1024  # default 1GB
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("V2S_ALLOWED_ORIGINS", "https://v2s.drevalis.com,http://localhost:8000").split(",")
@@ -49,6 +53,7 @@ ALLOWED_ORIGINS = [
 file_tools.ensure_directory(ARTIFACTS_DIR)
 file_tools.ensure_directory(MEDIA_IMAGES_DIR)
 file_tools.ensure_directory(MEDIA_VIDEOS_DIR)
+file_tools.ensure_directory(PREVIEWS_DIR)
 file_tools.ensure_directory(USERS_PATH.parent)
 
 _SESSIONS: dict[str, dict[str, Any]] = {}
@@ -76,6 +81,43 @@ def _load_users() -> list[dict[str, str]]:
     except Exception as exc:
         logger.error("Failed to read users.json, refusing to open registration: %s", exc)
         raise HTTPException(status_code=500, detail="User store unavailable") from exc
+
+
+def _load_usage() -> dict[str, int]:
+    if not USAGE_PATH.exists():
+        return {}
+    try:
+        with USAGE_PATH.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception as exc:
+        logger.warning("Failed to read usage.json, starting fresh: %s", exc)
+        return {}
+
+
+def _save_usage(usage: dict[str, int]) -> None:
+    USAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with USAGE_PATH.open("w", encoding="utf-8") as handle:
+        json.dump(usage, handle, indent=2)
+
+
+def _current_usage(user: str) -> int:
+    usage = _load_usage()
+    return int(usage.get(user, 0))
+
+
+def _ensure_quota(user: str, incoming_bytes: int) -> None:
+    """Guardrail for per-user quota before accepting a write."""
+
+    if incoming_bytes <= 0:
+        return
+    if _current_usage(user) + incoming_bytes > PER_USER_QUOTA:
+        raise HTTPException(status_code=507, detail="Quota exceeded for user")
+
+
+def _record_usage(user: str, delta: int) -> None:
+    usage = _load_usage()
+    usage[user] = max(0, int(usage.get(user, 0)) + delta)
+    _save_usage(usage)
 
 
 def _save_users(users: list[dict[str, str]]) -> None:
@@ -135,6 +177,7 @@ class GenerationRequest(BaseModel):
     chroma_key_tolerance: int = Field(12, ge=0, le=255)
     auto_edge_cutout: bool = True
     output_pattern: Optional[str] = None
+    preview_only: bool = False
 
     @field_validator("background_color", "chroma_key_color", mode="before")
     @classmethod
@@ -304,8 +347,13 @@ def create_app() -> FastAPI:
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type")
         _enforce_size_limit(request)
+        content_len = request.headers.get("content-length")
+        if content_len and content_len.isdigit():
+            _ensure_quota(user, int(content_len))
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = _write_upload_file(file, target_dir, suffix or ".dat")
+        target = _write_upload_file(file, target_dir, suffix or ".dat", owner=user)
+        _basic_safety_check(target, media_type)
+        _record_usage(user, target.stat().st_size)
         rel = target.relative_to(ARTIFACTS_DIR)
         return {"status": "ok", "type": media_type, "path": f"/artifacts/{rel.as_posix()}"}
 
@@ -321,7 +369,10 @@ def create_app() -> FastAPI:
         if ARTIFACTS_DIR not in target.parents and target != ARTIFACTS_DIR:
             raise HTTPException(status_code=400, detail="Invalid location")
         try:
+            size = target.stat().st_size if target.exists() else 0
             target.unlink()
+            if size:
+                _record_usage(user, -size)
             return {"status": "deleted"}
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to delete: {exc}") from exc
@@ -378,7 +429,8 @@ def create_app() -> FastAPI:
                 local_image = _resolve_media_path(media_path, MEDIA_IMAGES_DIR, {".png", ".jpg", ".jpeg", ".webp"})
             elif image:
                 _enforce_size_limit(request)
-                local_image = await _persist_upload(image, subdir="images")
+                _ensure_quota(user, int(request.headers.get("content-length", "0") or 0))
+                local_image = await _persist_upload(image, subdir="images", owner=user)
             else:
                 raise HTTPException(status_code=400, detail="Provide an image or media_path")
             result_path = await run_in_threadpool(
@@ -391,6 +443,8 @@ def create_app() -> FastAPI:
             logger.exception("Image processing failed")
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
+        if result_path.exists():
+            _record_usage(user, result_path.stat().st_size)
         return {"image_url": _artifact_url(result_path)}
 
     @app.post("/api/generate", response_model=GenerationResponse)
@@ -418,7 +472,8 @@ def create_app() -> FastAPI:
                 local_video = _resolve_media_path(media_path, MEDIA_VIDEOS_DIR, {".mp4", ".mov", ".avi", ".mkv", ".webm"})
             elif video:
                 _enforce_size_limit(request)
-                local_video = await _persist_upload(video)
+                _ensure_quota(user, int(request.headers.get("content-length", "0") or 0))
+                local_video = await _persist_upload(video, owner=user)
             else:
                 raise HTTPException(status_code=400, detail="Provide a video or media_path")
             if request_settings.max_frames is None or request_settings.max_frames > MAX_FRAME_CAP:
@@ -434,6 +489,25 @@ def create_app() -> FastAPI:
         finally:
             if local_video:
                 background_tasks.add_task(_cleanup_file, local_video)
+
+        # Record usage or schedule cleanup
+        total_size = 0
+        if result.outcome.spritesheet_path and result.outcome.spritesheet_path.exists():
+            total_size += result.outcome.spritesheet_path.stat().st_size
+        if result.outcome.manifest_path and result.outcome.manifest_path.exists():
+            total_size += result.outcome.manifest_path.stat().st_size
+        if request_settings.preview_only:
+            background_tasks.add_task(
+                _cleanup_preview_after_delay,
+                [result.outcome.spritesheet_path, result.outcome.manifest_path],
+            )
+        else:
+            try:
+                _ensure_quota(user, total_size)
+            except HTTPException:
+                _cleanup_preview([result.outcome.spritesheet_path, result.outcome.manifest_path])
+                raise
+            _record_usage(user, total_size)
 
         return GenerationResponse(
             spritesheet_url=_artifact_url(result.outcome.spritesheet_path),
@@ -468,11 +542,14 @@ def create_app() -> FastAPI:
                 local_image = _resolve_media_path(media_path, MEDIA_IMAGES_DIR, {".png", ".jpg", ".jpeg", ".webp"})
             elif image:
                 _enforce_size_limit(request)
-                local_image = await _persist_upload(image, subdir="images")
+                _ensure_quota(user, int(request.headers.get("content-length", "0") or 0))
+                local_image = await _persist_upload(image, subdir="images", owner=user)
             else:
                 raise HTTPException(status_code=400, detail="Provide an image or media_path")
             request_settings = SeamlessRequest(tile_size=tile_size, feather=feather)
             out_path = await run_in_threadpool(_run_seamless_texture, local_image, request_settings)
+            if out_path.exists():
+                _record_usage(user, out_path.stat().st_size)
             return {"image_url": _artifact_url(out_path)}
         except Exception as exc:
             logger.exception("Seamless generation failed")
@@ -493,11 +570,15 @@ def create_app() -> FastAPI:
                 local_video = _resolve_media_path(media_path, MEDIA_VIDEOS_DIR, {".mp4", ".mov", ".avi", ".mkv", ".webm"})
             elif video:
                 _enforce_size_limit(request)
-                local_video = await _persist_upload(video)
+                _ensure_quota(user, int(request.headers.get("content-length", "0") or 0))
+                local_video = await _persist_upload(video, owner=user)
             else:
                 raise HTTPException(status_code=400, detail="Provide a video or media_path")
             request_settings = ParallaxRequest(segments=segments, samples=samples)
             paths = await run_in_threadpool(_run_parallax_layers, local_video, request_settings)
+            for value in paths.values():
+                if value.exists():
+                    _record_usage(user, value.stat().st_size)
             return {
                 "background_url": _artifact_url(paths["background"]),
                 "mid_url": _artifact_url(paths["mid"]),
@@ -534,18 +615,19 @@ def _artifact_url(path: Path | None) -> Optional[str]:
         return f"/artifacts/{path.name}"
 
 
-async def _persist_upload(file: UploadFile, subdir: str = "uploads") -> Path:
+async def _persist_upload(file: UploadFile, subdir: str = "uploads", owner: Optional[str] = None) -> Path:
     """Persist the uploaded file into artifacts/uploads for processing."""
 
     suffix = Path(file.filename or "upload").suffix or ".dat"
     target_dir = ARTIFACTS_DIR / subdir
     file_tools.ensure_directory(target_dir)
-    return _write_upload_file(file, target_dir, suffix)
+    return _write_upload_file(file, target_dir, suffix, owner=owner)
 
 
-def _write_upload_file(file: UploadFile, target_dir: Path, suffix: str) -> Path:
+def _write_upload_file(file: UploadFile, target_dir: Path, suffix: str, owner: Optional[str] = None) -> Path:
     target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / f"{uuid.uuid4().hex}{suffix}"
+    prefix = f"{owner}_" if owner else ""
+    target = target_dir / f"{prefix}{uuid.uuid4().hex}{suffix}"
     written = 0
     with target.open("wb") as handle:
         while True:
@@ -577,6 +659,20 @@ def _resolve_media_path(path_str: str, base_dir: Path, allowed: set[str]) -> Pat
     return resolved
 
 
+def _basic_safety_check(path: Path, media_type: str) -> None:
+    """Lightweight validation to ensure file is decodable."""
+
+    try:
+        if media_type == "image":
+            with Image.open(path) as img:
+                img.verify()
+        elif media_type == "video":
+            video_loader.load_metadata(path)
+    except Exception as exc:
+        path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"File failed validation: {exc}") from exc
+
+
 def _enforce_size_limit(request: Request) -> None:
     """Simple guardrail on upload size based on Content-Length."""
 
@@ -601,6 +697,28 @@ def _cleanup_file(path: Path) -> None:
         logger.debug("Cleanup failed for %s", path)
 
 
+def _cleanup_preview(paths: list[Path | None]) -> None:
+    """Delete preview artifacts."""
+
+    for path in paths:
+        if path is None:
+            continue
+        try:
+            path.unlink()
+        except Exception:
+            logger.debug("Preview cleanup failed for %s", path)
+
+
+def _cleanup_preview_after_delay(paths: list[Path | None], delay: int = PREVIEW_TTL_SECONDS) -> None:
+    """Sleep briefly then remove preview files."""
+
+    try:
+        time.sleep(delay)
+    except Exception:
+        pass
+    _cleanup_preview(paths)
+
+
 def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationResult:
     """Perform the full pipeline for a single upload."""
 
@@ -608,11 +726,12 @@ def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationR
     validators.validate_video_path(video_path)
     metadata = video_loader.load_metadata(video_path)
 
+    base_dir = PREVIEWS_DIR if request.preview_only else ARTIFACTS_DIR
     timestamp = int(time.time())
     filename = file_tools.format_output_filename(
         video_path, request.output_pattern or "{stem}_sheet_{ts}", timestamp=timestamp
     )
-    output_path = ARTIFACTS_DIR / filename
+    output_path = base_dir / filename
 
     background_color = request.background_color
     chroma_color = request.chroma_key_color or background_color or (0, 0, 0, 255)
@@ -643,16 +762,26 @@ def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationR
         output_pattern=request.output_pattern,
     )
 
-    frames, infos = frame_extractor.extract_frames(settings, metadata)
-    sheet_path, sheet_image, packed_infos = spritesheet_builder.build_spritesheet(frames, infos, settings)
-    columns, rows = spritesheet_builder._resolve_grid(len(frames), settings.columns, settings.rows)
+    times = frame_extractor._compute_sample_times(  # type: ignore[attr-defined]
+        metadata,
+        request.frame_count,
+        request.frame_interval,
+        request.max_frames,
+        request.start_time,
+        request.end_time,
+    )
+    frame_iter = frame_extractor.iter_frames(settings, metadata, times)
+    sheet_path, sheet_image, packed_infos = spritesheet_builder.build_spritesheet_streaming(
+        frame_iter, len(times), settings
+    )
+    columns, rows = spritesheet_builder._resolve_grid(len(times), settings.columns, settings.rows)
     manifest_path = None
     if settings.generate_manifest:
         manifest_path = manifest_writer.write_manifest(packed_infos, settings, columns, rows)
 
     outcome = ProcessingOutcome(spritesheet_path=sheet_path, manifest_path=manifest_path)
     width, height = sheet_image.size
-    frame_width, frame_height = frames[0].size
+    frame_width, frame_height = packed_infos[0].width, packed_infos[0].height
     return GenerationResult(
         outcome=outcome,
         frame_count=len(frames),

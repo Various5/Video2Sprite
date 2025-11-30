@@ -27,6 +27,8 @@ FastAPI + PySide toolkit to turn videos into spritesheets with a modern web UI, 
 - CORS is restricted; override with `V2S_ALLOWED_ORIGINS="https://your.host,https://other.host"` if you host elsewhere.
 - Auth cookies are `Secure` + `SameSite=Strict`; serve over HTTPS.
 - Uploads are capped to ~50MB per request and renamed with UUIDs to avoid collisions.
+- Per-user storage quota defaults to ~1GB (override `V2S_USER_QUOTA_MB`).
+- Use the “Preview only” toggle in the web UI to emit short-lived outputs in `artifacts/previews/` (auto-cleaned).
 
 ## Media handling
 - Uploads in the web UI land in:
