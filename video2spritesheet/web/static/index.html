@@ -1259,7 +1259,7 @@
   <main id="tabSeamlessTool" style="display:none;">
     <section class="panel">
       <h2>Seamless Texture Designer</h2>
-      <p class="subtitle">Draft: upload or pick an image; future update will generate seamless tiles. Preview coming soon.</p>
+      <p class="subtitle">Upload or pick an image to generate a wrapped/offset tile with optional blur to soften seams.</p>
       <div class="pill-note">Selected media: <span id="seamlessSelected">None</span></div>
       <form id="seamlessForm">
         <label>
@@ -1270,19 +1270,21 @@
           <label>Tile size (px) <input type="number" name="seamless_size" min="32" value="512"></label>
           <label>Feather (px) <input type="number" name="seamless_feather" min="0" value="16"></label>
         </div>
-        <button type="button" id="seamlessStub">Preview (coming soon)</button>
-        <div class="status" id="seamlessStatus">This tool is a placeholder; backend not implemented yet.</div>
+        <button type="submit" id="seamlessSubmit">Generate seamless texture</button>
+        <div class="status" id="seamlessStatus"></div>
       </form>
       <div class="preview checker" style="margin-top:12px; min-height:220px;">
-        <span>Seamless preview will appear here.</span>
+        <span id="seamlessPreviewPlaceholder">Seamless preview will appear here.</span>
+        <img id="seamlessPreview" alt="Seamless result" style="display:none; max-height:320px;">
       </div>
+      <div class="links" id="seamlessLinks"></div>
     </section>
   </main>
 
   <main id="tabParallaxTool" style="display:none;">
     <section class="panel">
       <h2>Video → Parallax Layers</h2>
-      <p class="subtitle">Draft: upload/select a landscape video to extract parallax foreground/mid/background. Preview-only placeholder.</p>
+      <p class="subtitle">Upload/select a landscape video to preview placeholder parallax layers (foreground/mid/background).</p>
       <div class="pill-note">Selected media: <span id="parallaxSelected">None</span></div>
       <form id="parallaxForm">
         <label>
@@ -1293,12 +1295,18 @@
           <label>Segments <input type="number" name="parallax_segments" min="2" value="3"></label>
           <label>Sample frames <input type="number" name="parallax_samples" min="1" value="10"></label>
         </div>
-        <button type="button" id="parallaxStub">Preview layers (coming soon)</button>
-        <div class="status" id="parallaxStatus">Parallax extraction is not implemented yet; this UI is a placeholder.</div>
+        <button type="submit" id="parallaxSubmit">Preview layers</button>
+        <div class="status" id="parallaxStatus"></div>
       </form>
       <div class="preview checker" style="margin-top:12px; min-height:220px;">
-        <span>Parallax preview will appear here.</span>
+        <span id="parallaxPreviewPlaceholder">Parallax preview will appear here.</span>
+        <div class="media-grid">
+          <div><strong style="font-size:12px; color:var(--muted);">Background</strong><img id="parallaxBg" style="display:none; width:100%; border-radius:8px;"></div>
+          <div><strong style="font-size:12px; color:var(--muted);">Mid</strong><img id="parallaxMid" style="display:none; width:100%; border-radius:8px;"></div>
+          <div><strong style="font-size:12px; color:var(--muted);">Foreground</strong><img id="parallaxFg" style="display:none; width:100%; border-radius:8px;"></div>
+        </div>
       </div>
+      <div class="links" id="parallaxLinks"></div>
     </section>
   </main>
     </div>
@@ -1440,6 +1448,18 @@
     const imageLabSelected = document.getElementById("imageLabSelected");
     const seamlessSelected = document.getElementById("seamlessSelected");
     const parallaxSelected = document.getElementById("parallaxSelected");
+    const seamlessForm = document.getElementById("seamlessForm");
+    const seamlessStatus = document.getElementById("seamlessStatus");
+    const seamlessPreview = document.getElementById("seamlessPreview");
+    const seamlessPreviewPlaceholder = document.getElementById("seamlessPreviewPlaceholder");
+    const seamlessLinks = document.getElementById("seamlessLinks");
+    const parallaxForm = document.getElementById("parallaxForm");
+    const parallaxStatus = document.getElementById("parallaxStatus");
+    const parallaxPreviewPlaceholder = document.getElementById("parallaxPreviewPlaceholder");
+    const parallaxBg = document.getElementById("parallaxBg");
+    const parallaxMid = document.getElementById("parallaxMid");
+    const parallaxFg = document.getElementById("parallaxFg");
+    const parallaxLinks = document.getElementById("parallaxLinks");
 
     const numOrNull = (val) => {
       if (val === null || val === undefined) return null;
@@ -2004,12 +2024,85 @@
       handleFiles(files);
     });
 
-    // Placeholder alerts for draft tools
-    document.getElementById("seamlessStub").addEventListener("click", () => {
-      updateStatus(seamlessStatus, "Seamless preview coming soon. Backend not implemented.", true);
+    // Seamless texture
+    seamlessForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = seamlessForm.seamless_image.files[0];
+      const mediaPath = !file ? getSelectedMediaPath("image") : null;
+      if (!file && !mediaPath) {
+        updateStatus(seamlessStatus, "Provide an image or select one from Media Library.", true);
+        return;
+      }
+      const formData = new FormData();
+      if (file) formData.append("image", file);
+      if (mediaPath) formData.append("media_path", mediaPath);
+      formData.append("tile_size", numOrNull(seamlessForm.seamless_size.value) ?? "");
+      formData.append("feather", numOrNull(seamlessForm.seamless_feather.value) ?? 0);
+      updateStatus(seamlessStatus, "Processing...", false);
+      try {
+        const res = await fetch("/api/seamless-texture", { method: "POST", body: formData });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || `Request failed (${res.status})`);
+        }
+        const data = await res.json();
+        seamlessPreview.src = `${data.image_url}?t=${Date.now()}`;
+        seamlessPreview.style.display = "block";
+        seamlessPreviewPlaceholder.style.display = "none";
+        seamlessLinks.innerHTML = "";
+        seamlessLinks.appendChild(buildLink("Download seamless", data.image_url));
+        updateStatus(seamlessStatus, "Seamless texture ready.", false, true);
+      } catch (err) {
+        updateStatus(seamlessStatus, err.message || "Seamless generation failed", true);
+      }
     });
-    document.getElementById("parallaxStub").addEventListener("click", () => {
-      updateStatus(parallaxStatus, "Parallax extraction coming soon. Backend not implemented.", true);
+
+    // Parallax preview
+    parallaxForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const file = parallaxForm.parallax_video.files[0];
+      const mediaPath = !file ? getSelectedMediaPath("video") : null;
+      if (!file && !mediaPath) {
+        updateStatus(parallaxStatus, "Provide a video or select one from Media Library.", true);
+        return;
+      }
+      const formData = new FormData();
+      if (file) formData.append("video", file);
+      if (mediaPath) formData.append("media_path", mediaPath);
+      formData.append("segments", numOrNull(parallaxForm.parallax_segments.value) ?? 3);
+      formData.append("samples", numOrNull(parallaxForm.parallax_samples.value) ?? 8);
+      updateStatus(parallaxStatus, "Processing...", false);
+      try {
+        const res = await fetch("/api/parallax-preview", { method: "POST", body: formData });
+        if (!res.ok) {
+          const detail = await res.json().catch(() => ({}));
+          throw new Error(detail.detail || `Request failed (${res.status})`);
+        }
+        const data = await res.json();
+        [parallaxBg, parallaxMid, parallaxFg].forEach((el) => {
+          if (el) el.style.display = "none";
+        });
+        if (data.background_url) {
+          parallaxBg.src = `${data.background_url}?t=${Date.now()}`;
+          parallaxBg.style.display = "block";
+        }
+        if (data.mid_url) {
+          parallaxMid.src = `${data.mid_url}?t=${Date.now()}`;
+          parallaxMid.style.display = "block";
+        }
+        if (data.foreground_url) {
+          parallaxFg.src = `${data.foreground_url}?t=${Date.now()}`;
+          parallaxFg.style.display = "block";
+        }
+        parallaxPreviewPlaceholder.style.display = "none";
+        parallaxLinks.innerHTML = "";
+        if (data.background_url) parallaxLinks.appendChild(buildLink("Background", data.background_url));
+        if (data.mid_url) parallaxLinks.appendChild(buildLink("Mid", data.mid_url));
+        if (data.foreground_url) parallaxLinks.appendChild(buildLink("Foreground", data.foreground_url));
+        updateStatus(parallaxStatus, "Parallax preview ready.", false, true);
+      } catch (err) {
+        updateStatus(parallaxStatus, err.message || "Parallax extraction failed", true);
+      }
     });
 
     // Animation + transparency helpers

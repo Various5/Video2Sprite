@@ -15,6 +15,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image, ImageChops, ImageFilter, ImageEnhance
 from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
@@ -182,6 +183,20 @@ class ImageProcessRequest(BaseModel):
         if isinstance(value, str):
             return validators.parse_color_tuple(value)
         raise ValueError("Color must be R,G,B[,A]")
+
+
+class SeamlessRequest(BaseModel):
+    """Incoming options for seamless texture generation."""
+
+    tile_size: Optional[int] = Field(None, ge=16)
+    feather: float = Field(8.0, ge=0.0)
+
+
+class ParallaxRequest(BaseModel):
+    """Incoming options for parallax layer preview."""
+
+    segments: int = Field(3, ge=2, le=6)
+    samples: int = Field(8, ge=1, le=50)
 
 
 def require_auth(request: Request) -> str:
@@ -402,6 +417,56 @@ def create_app() -> FastAPI:
             },
         )
 
+    @app.post("/api/seamless-texture")
+    async def seamless_texture(
+        image: UploadFile | None = File(None),
+        media_path: Optional[str] = Form(None),
+        tile_size: Optional[int] = Form(None),
+        feather: float = Form(8.0),
+        user: str = Depends(require_auth),
+    ) -> dict[str, str]:
+        try:
+            local_image: Optional[Path] = None
+            if media_path:
+                local_image = _resolve_media_path(media_path, MEDIA_IMAGES_DIR, {".png", ".jpg", ".jpeg", ".webp"})
+            elif image:
+                local_image = await _persist_upload(image, subdir="images")
+            else:
+                raise HTTPException(status_code=400, detail="Provide an image or media_path")
+            request_settings = SeamlessRequest(tile_size=tile_size, feather=feather)
+            out_path = await run_in_threadpool(_run_seamless_texture, local_image, request_settings)
+            return {"image_url": _artifact_url(out_path)}
+        except Exception as exc:
+            logger.exception("Seamless generation failed")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/api/parallax-preview")
+    async def parallax_preview(
+        video: UploadFile | None = File(None),
+        media_path: Optional[str] = Form(None),
+        segments: int = Form(3),
+        samples: int = Form(8),
+        user: str = Depends(require_auth),
+    ) -> dict[str, str]:
+        try:
+            local_video: Optional[Path] = None
+            if media_path:
+                local_video = _resolve_media_path(media_path, MEDIA_VIDEOS_DIR, {".mp4", ".mov", ".avi", ".mkv", ".webm"})
+            elif video:
+                local_video = await _persist_upload(video)
+            else:
+                raise HTTPException(status_code=400, detail="Provide a video or media_path")
+            request_settings = ParallaxRequest(segments=segments, samples=samples)
+            paths = await run_in_threadpool(_run_parallax_layers, local_video, request_settings)
+            return {
+                "background_url": _artifact_url(paths["background"]),
+                "mid_url": _artifact_url(paths["mid"]),
+                "foreground_url": _artifact_url(paths["foreground"]),
+            }
+        except Exception as exc:
+            logger.exception("Parallax preview failed")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     return app
 
 
@@ -529,6 +594,46 @@ def _run_generation(video_path: Path, request: GenerationRequest) -> GenerationR
         frame_width=frame_width,
         frame_height=frame_height,
     )
+
+
+def _run_seamless_texture(path: Path, settings: SeamlessRequest) -> Path:
+    """Build a simple seamless-like texture by offsetting and optional blur."""
+
+    img = image_tools.load_image(path).convert("RGBA")
+    if settings.tile_size:
+        img = img.resize((settings.tile_size, settings.tile_size), Image.LANCZOS)
+    shifted = ImageChops.offset(img, img.width // 2, img.height // 2)
+    if settings.feather and settings.feather > 0:
+        shifted = shifted.filter(ImageFilter.GaussianBlur(radius=settings.feather))
+    out_path = ARTIFACTS_DIR / f"{path.stem}_seamless.png"
+    return image_tools.save_image(shifted, out_path)
+
+
+def _run_parallax_layers(path: Path, settings: ParallaxRequest) -> dict[str, Path]:
+    """Create a placeholder parallax preview by splitting a representative frame."""
+
+    try:
+        from moviepy.editor import VideoFileClip  # type: ignore
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Video processing unavailable: {exc}") from exc
+
+    with VideoFileClip(str(path), audio=False) as clip:
+        duration = clip.duration or 0
+        t = max(0.0, min(duration * 0.5, max(duration - 0.1, 0)))
+        frame = clip.get_frame(t)
+    img = Image.fromarray(frame).convert("RGBA")
+    mid = img.copy()
+    bg = img.filter(ImageFilter.GaussianBlur(radius=6))
+    fg = img.filter(ImageFilter.UnsharpMask(radius=2, percent=220, threshold=3))
+
+    bg_path = ARTIFACTS_DIR / f"{path.stem}_parallax_bg.png"
+    mid_path = ARTIFACTS_DIR / f"{path.stem}_parallax_mid.png"
+    fg_path = ARTIFACTS_DIR / f"{path.stem}_parallax_fg.png"
+
+    image_tools.save_image(bg, bg_path)
+    image_tools.save_image(mid, mid_path)
+    image_tools.save_image(fg, fg_path)
+    return {"background": bg_path, "mid": mid_path, "foreground": fg_path}
 
 
 def _run_image_processing(path: Path, settings: ImageProcessRequest, original_name: Path) -> Path:
