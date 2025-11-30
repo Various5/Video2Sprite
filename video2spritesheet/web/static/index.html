@@ -768,6 +768,10 @@
           <h3 style="margin:0 0 6px;">Images</h3>
           <div class="media-grid" id="libraryImageList"></div>
         </div>
+        <div>
+          <h3 style="margin:0 0 6px;">Artifacts</h3>
+          <ul class="artifact-list" id="libraryArtifactsList"></ul>
+        </div>
       </div>
     </section>
   </main>
@@ -1883,6 +1887,8 @@
         artifactList.innerHTML = "";
         libraryVideoList.innerHTML = "";
         libraryImageList.innerHTML = "";
+        const libraryArtifactsList = document.getElementById("libraryArtifactsList");
+        if (libraryArtifactsList) libraryArtifactsList.innerHTML = "";
 
         const addMediaRow = (targetList, href, typeLabel) => {
           const name = href.split("/").pop();
@@ -1982,6 +1988,12 @@
           li.textContent = name;
           li.addEventListener("click", () => window.open(href, "_blank"));
           artifactList.appendChild(li);
+          if (libraryArtifactsList) {
+            const li2 = document.createElement("li");
+            li2.textContent = name;
+            li2.addEventListener("click", () => window.open(href, "_blank"));
+            libraryArtifactsList.appendChild(li2);
+          }
         });
       } catch (err) {
         console.error(err);
