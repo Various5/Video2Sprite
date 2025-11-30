@@ -2260,8 +2260,8 @@
         if (!el) return;
         el.style.display = key === view ? "grid" : "none";
       });
-      navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target ==== view));
-    };
+      navLinks.forEach((link) => link.classList.toggle("active", link.dataset.target === view));
+    }
     window.setView = setView;
     navLinks.forEach((link) => link.addEventListener("click", () => setView(link.dataset.target)));
     navToggle.addEventListener("click", () => {
@@ -2269,7 +2269,6 @@
       navToggle.textContent = sidebar.classList.contains("collapsed") ? "Expand menu" : "Collapse menu";
     });
     // Ensure nav is synced on load
-    setView("sprites");
     setView("sprites");
 
     // Image lab
